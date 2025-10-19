@@ -62,7 +62,6 @@ class NLPProcessor:
         self.confirm_patterns = [
             r'\b(yes|yeah|yep|correct|right|that\'s right|sounds good|perfect)\b',
             r'\b(confirm|proceed|go ahead|place order)\b',
-            r'\b(confirm my order|confirm the order|place the order|finalize|pay)\b',
         ]
         
         # Cancel intent patterns

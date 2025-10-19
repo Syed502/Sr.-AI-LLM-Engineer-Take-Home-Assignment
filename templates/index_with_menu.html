@@ -9,60 +9,58 @@
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             margin: 0; 
-            padding: 10px; 
+            padding: 20px; 
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            font-size: 14px;
         }
         .container { 
-            max-width: 1600px; 
+            max-width: 1400px; 
             margin: 0 auto; 
             background: white; 
-            padding: 15px; 
-            border-radius: 10px; 
-            box-shadow: 0 5px 20px rgba(0,0,0,0.15); 
+            padding: 30px; 
+            border-radius: 15px; 
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2); 
         }
         h1 { 
             color: #333; 
             text-align: center; 
-            margin-bottom: 5px;
-            font-size: 1.8em;
+            margin-bottom: 10px;
+            font-size: 2.5em;
         }
         .subtitle {
             text-align: center;
             color: #666;
-            margin-bottom: 15px;
-            font-size: 0.9em;
+            margin-bottom: 30px;
+            font-size: 1.1em;
         }
         .main-layout {
             display: grid;
-            grid-template-columns: 1fr 300px;
-            gap: 15px;
-            margin-top: 15px;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
         }
         .left-panel {
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 20px;
         }
         .right-panel {
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 20px;
         }
         .section { 
             background: #f8f9fa; 
-            padding: 12px; 
-            border-radius: 8px; 
+            padding: 20px; 
+            border-radius: 10px; 
             border: 1px solid #e0e0e0;
         }
         .section h2 { 
             margin-top: 0; 
-            margin-bottom: 8px;
             color: #333;
-            font-size: 1.1em;
+            font-size: 1.4em;
             border-bottom: 2px solid #667eea;
-            padding-bottom: 6px;
+            padding-bottom: 10px;
         }
         button { 
             padding: 12px 20px; 
@@ -311,46 +309,6 @@
             50% { opacity: 0.5; }
         }
         
-        /* Compact Layout Overrides */
-        .compact-layout {
-            font-size: 0.9em;
-        }
-        .compact-layout .section {
-            padding: 10px;
-        }
-        .compact-layout .section h2 {
-            font-size: 1em;
-            margin-bottom: 6px;
-        }
-        .compact-layout .menu-item {
-            padding: 12px;
-        }
-        .compact-layout .menu-item h3 {
-            font-size: 1em;
-            margin-bottom: 6px;
-        }
-        .compact-layout .menu-item .price {
-            font-size: 1.2em;
-            margin: 6px 0;
-        }
-        .compact-layout .cart-item {
-            padding: 10px;
-            margin: 6px 0;
-        }
-        .compact-layout .conversation-box {
-            max-height: 250px;
-            padding: 12px;
-        }
-        .compact-layout .message {
-            margin: 8px 0;
-            padding: 8px;
-        }
-        .compact-layout .cart-total {
-            font-size: 1.3em;
-            margin-top: 12px;
-            padding-top: 12px;
-        }
-        
         /* Responsive Design */
         @media (max-width: 1024px) {
             .main-layout {
@@ -359,7 +317,7 @@
         }
     </style>
 </head>
-<body class="compact-layout">
+<body>
     <div class="container">
         <h1>🍩 Dr. Donut Voice Ordering System</h1>
         <p class="subtitle">Order by voice or click the menu items below</p>
@@ -367,7 +325,7 @@
         <div class="section">
             <h2>📊 Status</h2>
             <div id="status" class="status status-info">Initializing...</div>
-            <div style="margin-top: 8px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; font-size: 0.85em;">
+            <div style="margin-top: 10px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
                 <div><strong>Session:</strong> <span id="session-display">Loading...</span></div>
                 <div><strong>Menu:</strong> <span id="menu-display-name">-</span></div>
                 <div><strong>Ultravox:</strong> <span id="ultravox-display">Not connected</span></div>
@@ -518,91 +476,6 @@
             console.error('❌ Error:', data.msg);
             showStatus(data.msg, 'error');
         });
-
-        // Add auto-confirmation handler for voice commands
-        socket.on('auto_confirm_order', function(data) {
-            console.log('🎉 Auto-confirming order via voice command:', data.message);
-            
-            // Show notification
-            showNotification(data.message, 'success');
-            
-            // Trigger the confirm button programmatically
-            const confirmButton = document.getElementById('confirm-order-btn') || 
-                                 document.querySelector('[onclick*="confirmOrder"]') ||
-                                 document.querySelector('.confirm-button');
-            
-            if (confirmButton) {
-                // Add visual feedback
-                confirmButton.style.background = 'linear-gradient(45deg, #28a745, #20c997)';
-                confirmButton.style.transform = 'scale(1.05)';
-                confirmButton.textContent = '✅ Confirming...';
-                
-                // Trigger the confirmation after a brief delay for visual feedback
-                setTimeout(() => {
-                    confirmButton.click();
-                }, 500);
-                
-                // Reset button appearance
-                setTimeout(() => {
-                    if (confirmButton) {
-                        confirmButton.style.background = '';
-                        confirmButton.style.transform = '';
-                        confirmButton.textContent = 'Confirm & Pay';
-                    }
-                }, 2000);
-            } else {
-                console.warn('⚠️ Could not find confirm button to trigger');
-                // Fallback: call confirmOrder directly if button not found
-                if (typeof confirmOrder === 'function') {
-                    confirmOrder();
-                }
-            }
-        });
-
-        // Helper function to show notifications
-        function showNotification(message, type = 'info') {
-            // Create notification element if it doesn't exist
-            let notification = document.getElementById('voice-notification');
-            if (!notification) {
-                notification = document.createElement('div');
-                notification.id = 'voice-notification';
-                notification.style.cssText = `
-                    position: fixed;
-                    top: 20px;
-                    right: 20px;
-                    padding: 15px 20px;
-                    border-radius: 8px;
-                    color: white;
-                    font-weight: bold;
-                    z-index: 10000;
-                    transition: all 0.3s ease;
-                    max-width: 300px;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                `;
-                document.body.appendChild(notification);
-            }
-            
-            // Set colors based on type
-            const colors = {
-                success: 'linear-gradient(45deg, #28a745, #20c997)',
-                error: 'linear-gradient(45deg, #dc3545, #fd7e14)',
-                info: 'linear-gradient(45deg, #007bff, #6f42c1)',
-                warning: 'linear-gradient(45deg, #ffc107, #fd7e14)'
-            };
-            
-            notification.style.background = colors[type] || colors.info;
-            notification.textContent = message;
-            notification.style.display = 'block';
-            notification.style.opacity = '1';
-            
-            // Auto-hide after 3 seconds
-            setTimeout(() => {
-                notification.style.opacity = '0';
-                setTimeout(() => {
-                    notification.style.display = 'none';
-                }, 300);
-            }, 3000);
-        }
 
         // Select menu
         async function selectMenu(menuType) {

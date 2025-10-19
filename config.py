@@ -14,7 +14,7 @@ class Config:
     DEBUG = os.environ.get('DEBUG', 'false').lower() == 'true'
     
     # Ultravox API Configuration
-    ULTRAVOX_API_KEY = os.getenv("ULTRAVOX_API_KEY", "cq97Fg4w.4J04UfjTsNpZS2332iRAgHrAKWyQwtIw")
+    ULTRAVOX_API_KEY = os.getenv("ULTRAVOX_API_KEY", "GYQpq6Un.sI0olzfXjmbbfDmhpKiy9ieLZOYwY3xz")
     ULTRAVOX_API_URL = "https://api.ultravox.ai/api/calls"
     
     # WebSocket Configuration
@@ -28,15 +28,6 @@ class Config:
     
     # Session Configuration
     SESSION_CLEANUP_INTERVAL = 300  # seconds
-    
-    # Cart Configuration
-    CART_SYNC_DELAY = 2.0  # seconds to wait before syncing from agent to prevent duplicates
-    
-    # Voice Command Configuration
-    VOICE_CONFIRM_PHRASES = [
-        "confirm my order", "confirm the order", "place the order", 
-        "finalize my order", "pay for this", "checkout", "that's correct"
-    ]
     
     # Logging Configuration
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')

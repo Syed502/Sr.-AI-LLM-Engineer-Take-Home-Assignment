@@ -24,7 +24,7 @@ import concurrent.futures
 import queue
 
 # Import cart engine
-from cart_engine import Cart, CartNormalizer, CartItem
+from cart_engine import Cart, CartNormalizer
 from menu_data import get_menu
 from smart_cart_parser import SmartCartParser
 
@@ -41,7 +41,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 user_sessions = {}
 
 # Ultravox API configuration
-ULTRAVOX_API_KEY = os.getenv("ULTRAVOX_API_KEY", "cq97Fg4w.4J04UfjTsNpZS2332iRAgHrAKWyQwtIw")
+ULTRAVOX_API_KEY = os.getenv("ULTRAVOX_API_KEY", "eOkGyqc9.wTCRS3JnMLAJ0k5GY49sSV9tLu4YpADg")
 
 class UltravoxVoiceSession:
     """Manages a voice session with Ultravox WebSocket"""
@@ -364,21 +364,14 @@ LATTE $3.49
                         'session_id': self.session_id
                     })
                     
-                # Process agent confirmations for cart updates - only on complete recaps
-                if any(phrase in text.lower() for phrase in [
-                    "to recap", "your order", "so now you've got", "total comes out"
-                ]) and len(text.split()) > 10:  # Only process substantial responses
-                    await self._sync_cart_from_agent_response(text)
-                else:
-                    # For short responses, don't modify cart - just preserve state
-                    logger.info(f"🔒 Preserving cart during short agent response: '{text[:50]}...'")
-                    # Emit current cart to keep UI in sync
-                    socketio.emit('cart_update', {
-                        'cart': self.cart.to_dict(),
-                        'session_id': self.session_id
-                    })
-                
-            elif delta:
+                    # Process agent confirmations for cart updates
+                    if any(phrase in text.lower() for phrase in [
+                        "confirm", "total order", "repeat that back", "removed", 
+                        "now you have", "now you just have"
+                    ]):
+                        await self._update_cart_from_agent_confirmation(text)
+                    
+                elif delta:
                     # Handle deltas silently - only emit to client, don't log
                     if not hasattr(self, '_pending_agent_output'):
                         self._pending_agent_output = ""
@@ -432,41 +425,27 @@ LATTE $3.49
             elif intent == "add":
                 # Handle add operation using existing cart normalizer
                 logger.info(f"➕ Processing add operation...")
+                new_items_cart = self.cart_normalizer.parse_order(text)
                 
-                # Only clear cart if we successfully parse new items
-                try:
-                    new_items_cart = self.cart_normalizer.parse_order(text)
+                # Merge new items with existing cart instead of replacing
+                for new_item in new_items_cart.items:
+                    # Check if item already exists in cart
+                    existing_item = None
+                    for existing in self.cart.items:
+                        if (existing.name == new_item.name and 
+                            existing.size == new_item.size and 
+                            set(existing.modifiers) == set(new_item.modifiers)):
+                            existing_item = existing
+                            break
                     
-                    # Only process if we actually found items
-                    if new_items_cart.items:
-                        # Merge new items with existing cart instead of replacing
-                        for new_item in new_items_cart.items:
-                            # Check if item already exists in cart
-                            existing_item = None
-                            for existing in self.cart.items:
-                                if (existing.name == new_item.name and 
-                                    existing.size == new_item.size and 
-                                    set(existing.modifiers) == set(new_item.modifiers)):
-                                    existing_item = existing
-                                    break
-                            
-                            if existing_item:
-                                # Increase quantity of existing item
-                                existing_item.quantity += new_item.quantity
-                                logger.info(f"🔄 Updated existing item: {existing_item.name} (quantity: {existing_item.quantity})")
-                            else:
-                                # Add new item to cart
-                                self.cart.items.append(new_item)
-                                logger.info(f"➕ Added new item: {new_item.name} (quantity: {new_item.quantity})")
-                                
-                        # Mark the time when we added items to prevent rapid duplicates
-                        import time
-                        self._last_addition_time = time.time()
+                    if existing_item:
+                        # Increase quantity of existing item
+                        existing_item.quantity += new_item.quantity
+                        logger.info(f"🔄 Updated existing item: {existing_item.name} (quantity: {existing_item.quantity})")
                     else:
-                        logger.info(f"❓ No valid items found in '{text}' - keeping existing cart")
-                except Exception as e:
-                    logger.error(f"❌ Error parsing add operation: {e}")
-                    logger.info("🔄 Keeping existing cart due to parse error")
+                        # Add new item to cart
+                        self.cart.items.append(new_item)
+                        logger.info(f"➕ Added new item: {new_item.name} (quantity: {new_item.quantity})")
                         
             elif intent == "query":
                 # Handle query operation
@@ -475,29 +454,9 @@ LATTE $3.49
                 logger.info(f"📋 Query result: {result['message']}")
                 
             elif intent == "confirm":
-                # Handle confirm operation - automatically trigger order confirmation
-                logger.info(f"✅ Processing confirm operation - triggering order confirmation...")
-                result = self.confirm_order()
-                
-                if result["success"]:
-                    # Emit order confirmation to client
-                    socketio.emit('order_confirmed', {
-                        'success': True,
-                        'message': result["message"],
-                        'order': result["order"],
-                        'session_id': self.session_id,
-                        'auto_confirmed': True  # Flag to indicate this was automatic
-                    })
-                    
-                    # Also trigger the confirm button click in the UI
-                    socketio.emit('auto_confirm_order', {
-                        'session_id': self.session_id,
-                        'message': 'Order confirmed automatically via voice command!'
-                    })
-                    
-                    logger.info(f"🎉 Order auto-confirmed via voice: {result['message']}")
-                else:
-                    logger.warning(f"⚠️ Auto-confirmation failed: {result.get('message', 'Unknown error')}")
+                # Handle confirm operation
+                logger.info(f"✅ Processing confirm operation...")
+                # This will be handled by the confirm_order endpoint
                 
             elif intent == "cancel":
                 # Handle cancel operation
@@ -505,32 +464,26 @@ LATTE $3.49
                 self.clear_cart()
                 
             else:
-                # Unknown intent - try to parse as add but be defensive
+                # Unknown intent - try to parse as add
                 logger.info(f"❓ Unknown intent, attempting to parse as add...")
-                try:
-                    new_items_cart = self.cart_normalizer.parse_order(text)
-                    
-                    if new_items_cart.items:
-                        for new_item in new_items_cart.items:
-                            existing_item = None
-                            for existing in self.cart.items:
-                                if (existing.name == new_item.name and 
-                                    existing.size == new_item.size and 
-                                    set(existing.modifiers) == set(new_item.modifiers)):
-                                    existing_item = existing
-                                    break
-                            
-                            if existing_item:
-                                existing_item.quantity += new_item.quantity
-                                logger.info(f"🔄 Updated existing item: {existing_item.name} (quantity: {existing_item.quantity})")
-                            else:
-                                self.cart.items.append(new_item)
-                                logger.info(f"➕ Added new item: {new_item.name} (quantity: {new_item.quantity})")
-                    else:
-                        logger.info(f"❓ No valid items parsed from unknown intent '{text}' - keeping existing cart")
-                except Exception as e:
-                    logger.error(f"❌ Error parsing unknown intent: {e}")
-                    logger.info("🔄 Keeping existing cart due to parse error")
+                new_items_cart = self.cart_normalizer.parse_order(text)
+                
+                if new_items_cart.items:
+                    for new_item in new_items_cart.items:
+                        existing_item = None
+                        for existing in self.cart.items:
+                            if (existing.name == new_item.name and 
+                                existing.size == new_item.size and 
+                                set(existing.modifiers) == set(new_item.modifiers)):
+                                existing_item = existing
+                                break
+                        
+                        if existing_item:
+                            existing_item.quantity += new_item.quantity
+                            logger.info(f"🔄 Updated existing item: {existing_item.name} (quantity: {existing_item.quantity})")
+                        else:
+                            self.cart.items.append(new_item)
+                            logger.info(f"➕ Added new item: {new_item.name} (quantity: {new_item.quantity})")
             
             # Recalculate total
             self.cart.total = sum(item.price * item.quantity for item in self.cart.items)
@@ -560,18 +513,41 @@ LATTE $3.49
         try:
             logger.info(f"🤖 Processing agent confirmation: '{text}'")
             
-            # Don't modify cart from agent confirmations - cart should only be updated from user transcripts
-            # This prevents the cart from being cleared when agent speaks
-            logger.info("🔒 Preserving cart state - agent confirmations don't modify cart")
+            # Use smart parser to extract items and determine if it's a removal
+            items, is_removal = self.smart_parser.parse_agent_text(text)
             
-            # Just emit the current cart state to keep UI in sync
+            if is_removal and ("now you just have" in text.lower() or "now you have" in text.lower()):
+                # Complete replacement - clear cart and add only what's mentioned
+                logger.info("🔄 Complete cart replacement detected")
+                self.cart = Cart()
+                
+                # Add the parsed items
+                for item_data in items:
+                    from cart_engine import CartItem
+                    cart_item = CartItem(
+                        name=item_data['name'],
+                        quantity=item_data['quantity'],
+                        price=item_data['price'],
+                        size=item_data['size'],
+                        modifiers=item_data['modifiers']
+                    )
+                    self.cart.items.append(cart_item)
+                    logger.info(f"➕ Set final cart: {item_data['quantity']}x {item_data['size']} {item_data['name']}")
+            
+            # Recalculate total
+            self.cart.total = sum(item.price * item.quantity for item in self.cart.items)
+            
+            # Emit cart update to web client
             socketio.emit('cart_update', {
                 'cart': self.cart.to_dict(),
                 'session_id': self.session_id
             })
             
+            # Print clean cart summary
+            self._print_cart_summary()
+            
         except Exception as e:
-            logger.error(f"❌ Error processing agent confirmation: {e}")
+            logger.error(f"❌ Error updating cart from agent confirmation: {e}")
     
     def clear_cart(self):
         """Clear the current cart for a new order"""
@@ -705,156 +681,6 @@ LATTE $3.49
                 logger.info(f"📤 Sent cart update to agent")
         except Exception as e:
             logger.error(f"Error updating agent cart: {e}")
-    
-    async def _sync_cart_from_agent_response(self, text: str):
-        """Sync cart from agent response only when there are actual discrepancies"""
-        try:
-            logger.info(f"🔄 Checking agent response for cart sync: '{text[:100]}...'")
-            
-            # Prevent processing if we just added items (within 2 seconds)
-            import time
-            if hasattr(self, '_last_addition_time') and time.time() - self._last_addition_time < 2.0:
-                logger.info("🔒 Recently added items - skipping agent sync to prevent duplicates")
-                return
-            
-            # Check for full order recap first
-            if self._is_full_order_recap(text):
-                logger.info("📋 Full order recap detected - comparing with current cart")
-                await self._compare_and_sync_cart_from_recap(text)
-                return
-            
-            # For non-recap responses, don't modify cart at all
-            logger.info("� Non-recap agent response - preserving cart state")
-            
-            # Just emit current cart to keep UI in sync
-            socketio.emit('cart_update', {
-                'cart': self.cart.to_dict(),
-                'session_id': self.session_id
-            })
-            
-        except Exception as e:
-            logger.error(f"❌ Error checking agent response: {e}")
-            import traceback
-            traceback.print_exc()
-
-    async def _compare_and_sync_cart_from_recap(self, text: str):
-        """Compare agent recap with current cart and only sync if there are differences"""
-        try:
-            logger.info("📋 Comparing agent recap with current cart...")
-            
-            # Use smart parser to extract all items from agent recap
-            items, _ = self.smart_parser.parse_agent_text(text)
-            
-            if not items:
-                logger.warning("⚠️ No items found in agent recap - keeping existing cart")
-                return
-                
-            logger.info(f"📦 Agent mentioned {len(items)} items in recap")
-            
-            # Create expected cart from agent's recap
-            expected_cart = {}
-            for item_data in items:
-                # Find SKU from menu
-                sku = None
-                for menu_item in self.menu.items:
-                    if menu_item.name == item_data['name']:
-                        sku = menu_item.sku
-                        break
-                
-                if sku:
-                    key = (sku, item_data['size'], tuple(sorted(item_data['modifiers'])))
-                    if key in expected_cart:
-                        expected_cart[key]['quantity'] += item_data['quantity']
-                    else:
-                        expected_cart[key] = {
-                            'sku': sku,
-                            'name': item_data['name'],
-                            'quantity': item_data['quantity'],
-                            'price': item_data['price'],
-                            'size': item_data['size'],
-                            'modifiers': item_data['modifiers']
-                        }
-            
-            # Create current cart map for comparison
-            current_cart = {}
-            for item in self.cart.items:
-                key = (item.sku, item.size, tuple(sorted(item.modifiers)))
-                current_cart[key] = {
-                    'sku': item.sku,
-                    'name': item.name,
-                    'quantity': item.quantity,
-                    'price': item.price,
-                    'size': item.size,
-                    'modifiers': item.modifiers
-                }
-            
-            # Compare carts
-            has_differences = False
-            
-            # Check if quantities differ
-            for key, expected_item in expected_cart.items():
-                if key not in current_cart:
-                    logger.info(f"🔍 Difference: Agent has {expected_item['name']} but current cart doesn't")
-                    has_differences = True
-                elif current_cart[key]['quantity'] != expected_item['quantity']:
-                    logger.info(f"🔍 Quantity difference: {expected_item['name']} - Agent: {expected_item['quantity']}, Current: {current_cart[key]['quantity']}")
-                    has_differences = True
-            
-            # Check if current cart has items agent doesn't mention
-            for key, current_item in current_cart.items():
-                if key not in expected_cart:
-                    logger.info(f"🔍 Difference: Current cart has {current_item['name']} but agent doesn't mention it")
-                    has_differences = True
-            
-            # Only update cart if there are actual differences
-            if has_differences:
-                logger.info("🔄 Cart differences detected - syncing with agent recap")
-                
-                # Create new cart from agent's recap
-                new_cart = Cart()
-                for item_data in expected_cart.values():
-                    cart_item = CartItem(
-                        sku=item_data['sku'],
-                        name=item_data['name'],
-                        quantity=item_data['quantity'],
-                        price=item_data['price'],
-                        size=item_data['size'],
-                        modifiers=item_data['modifiers']
-                    )
-                    new_cart.items.append(cart_item)
-                
-                # Calculate total
-                new_cart.total = sum(item.price * item.quantity for item in new_cart.items)
-                
-                # Replace cart
-                self.cart = new_cart
-                
-                logger.info(f"📊 Cart synced from agent recap: {len(self.cart.items)} items, total: ${self.cart.total:.2f}")
-                
-                # Print clean cart summary
-                self._print_cart_summary()
-                
-                # Emit cart update
-                socketio.emit('cart_update', {
-                    'cart': self.cart.to_dict(),
-                    'session_id': self.session_id
-                })
-            else:
-                logger.info("✅ Cart matches agent recap - no sync needed")
-                
-        except Exception as e:
-            logger.error(f"❌ Error comparing cart with agent recap: {e}")
-            import traceback
-            traceback.print_exc()
-    
-    def _is_full_order_recap(self, text: str) -> bool:
-        """Check if text contains a full order recap"""
-        text_lower = text.lower()
-        recap_indicators = [
-            "so to recap", "to recap", "let me recap", "your order", 
-            "you've got", "so now you've got", "that's", "your total"
-        ]
-        return any(indicator in text_lower for indicator in recap_indicators)
 
 # Create async loop for WebSocket handling
 def run_async_in_thread(coro):
