@@ -41,7 +41,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 user_sessions = {}
 
 # Ultravox API configuration
-ULTRAVOX_API_KEY = os.getenv("ULTRAVOX_API_KEY", "eOkGyqc9.wTCRS3JnMLAJ0k5GY49sSV9tLu4YpADg")
+ULTRAVOX_API_KEY = os.getenv("ULTRAVOX_API_KEY", "W59kEtpE.4DybdJMISpDCrW8Ikp5Mdwxmiz15Pwdd")
 
 class UltravoxVoiceSession:
     """Manages a voice session with Ultravox WebSocket"""
