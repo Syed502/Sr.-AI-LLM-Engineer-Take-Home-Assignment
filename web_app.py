@@ -41,7 +41,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 user_sessions = {}
 
 # Ultravox API configuration
-ULTRAVOX_API_KEY = os.getenv("ULTRAVOX_API_KEY", "W59kEtpE.4DybdJMISpDCrW8Ikp5Mdwxmiz15Pwdd")
+ULTRAVOX_API_KEY = os.getenv("ULTRAVOX_API_KEY", "kdyG4Sth.SYDFSGkgyfioyT1JAFREtRBim11T8e9Q")
 
 class UltravoxVoiceSession:
     """Manages a voice session with Ultravox WebSocket"""
@@ -99,6 +99,7 @@ class UltravoxVoiceSession:
             
             system_prompt = f"""
 You are a drive-thru order taker for a donut shop called "Dr. Donut". Local time is currently: {datetime.now().isoformat()}
+Session ID: {self.session_id[:8]} (for internal tracking only)
 The user is talking to you over voice on their phone, and your response will be read out loud with realistic text-to-speech (TTS) technology.
 
 IMPORTANT: The current order in the cart is:
@@ -169,8 +170,8 @@ LATTE $3.49
             logger.error(f"Failed to create Ultravox call: {e}")
             return False
     
-    async def connect_websocket(self):
-        """Connect to Ultravox WebSocket"""
+    async def connect_websocket(self, retry_count=0, max_retries=3):
+        """Connect to Ultravox WebSocket with retry logic"""
         if not self.join_url:
             logger.info("🔗 Creating Ultravox call...")
             if not await self.create_ultravox_call():
@@ -184,7 +185,7 @@ LATTE $3.49
                 self._start_event_loop()
             
             # Schedule the connection in the dedicated loop with timeout
-            logger.info("⏱️ Scheduling WebSocket connection...")
+            logger.info(f"⏱️ Scheduling WebSocket connection (attempt {retry_count + 1}/{max_retries + 1})...")
             future = asyncio.run_coroutine_threadsafe(
                 self._connect_websocket_async(), 
                 self._loop
@@ -203,14 +204,36 @@ LATTE $3.49
                 logger.info("✅ Audio processor started successfully")
             else:
                 logger.error("❌ WebSocket connection failed")
+                
+                # Retry on failure
+                if retry_count < max_retries:
+                    logger.info(f"🔄 Retrying connection in 2 seconds... (attempt {retry_count + 2}/{max_retries + 1})")
+                    await asyncio.sleep(2)
+                    # Clear join_url to force new call creation
+                    self.join_url = None
+                    return await self.connect_websocket(retry_count + 1, max_retries)
             
             return result
             
         except asyncio.TimeoutError:
             logger.error("⏰ Connection timeout - taking too long to connect")
+            
+            # Retry on timeout
+            if retry_count < max_retries:
+                logger.info(f"🔄 Retrying connection after timeout... (attempt {retry_count + 2}/{max_retries + 1})")
+                self.join_url = None  # Force new call creation
+                return await self.connect_websocket(retry_count + 1, max_retries)
+            
             return False
         except Exception as e:
             logger.error(f"💥 Failed to connect to Ultravox WebSocket: {e}")
+            
+            # Retry on general exception
+            if retry_count < max_retries:
+                logger.info(f"🔄 Retrying connection after error... (attempt {retry_count + 2}/{max_retries + 1})")
+                self.join_url = None  # Force new call creation
+                return await self.connect_websocket(retry_count + 1, max_retries)
+            
             return False
     
     async def _connect_websocket_async(self):
@@ -286,6 +309,27 @@ LATTE $3.49
                     
                 await self._handle_websocket_message(message)
                 
+        except websockets.exceptions.ConnectionClosedError as e:
+            if e.code == 4409:
+                logger.warning(f"⚠️ WebSocket conflict (4409) - call already in use. Creating new call...")
+                # Clear the join_url to force creation of a new call
+                self.join_url = None
+                self.is_connected = False
+                self._running = False
+                
+                # Emit conflict error to client
+                socketio.emit('ultravox_conflict', {
+                    'session_id': self.session_id,
+                    'message': 'Connection conflict detected. Please try connecting again.'
+                })
+                
+                # Auto-retry after clearing the connection
+                logger.info(f"🔄 Auto-retrying connection for session {self.session_id}")
+                asyncio.create_task(self._retry_connection_after_conflict())
+            else:
+                logger.error(f"💥 WebSocket connection closed: {e}")
+                self.is_connected = False
+                self._running = False
         except Exception as e:
             logger.error(f"💥 WebSocket listening error: {e}")
             self.is_connected = False
@@ -745,8 +789,9 @@ def start_session():
     # Check if we already have a session
     existing_session_id = session.get('session_id')
     menu_name = request.args.get('menu', 'small')
+    force_new = request.args.get('force_new', 'false').lower() == 'true'
     
-    if existing_session_id and existing_session_id in user_sessions:
+    if existing_session_id and existing_session_id in user_sessions and not force_new:
         ultravox_session = user_sessions[existing_session_id]
         
         # Check if the session is still viable
@@ -780,8 +825,9 @@ def start_session():
     # Clean up any old sessions that might be disconnected
     cleanup_old_sessions()
     
-    # Create new session
-    session_id = str(uuid.uuid4())
+    # Create new session with timestamp to ensure uniqueness in cloud deployments
+    import time
+    session_id = f"{str(uuid.uuid4())}-{int(time.time())}"
     
     # Create new Ultravox session
     ultravox_session = UltravoxVoiceSession(session_id, menu_name)

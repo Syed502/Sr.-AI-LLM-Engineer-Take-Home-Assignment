@@ -433,6 +433,19 @@
             showStatus('Disconnected from server', 'error');
         });
 
+        socket.on('ultravox_conflict', (data) => {
+            console.log('⚠️ Ultravox conflict detected:', data.message);
+            showStatus('⚠️ Connection conflict detected. Retrying...', 'warning');
+            
+            // Auto-retry after a short delay
+            setTimeout(() => {
+                if (sessionId) {
+                    showStatus('🔄 Retrying connection...', 'info');
+                    connectToUltravox();
+                }
+            }, 3000);
+        });
+
         socket.on('ultravox_connection', (data) => {
             if (data.success) {
                 isConnectedToUltravox = true;
