@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"        .status-warning {
+            color: #f57c00;
+            background-color: #fff3e0;
+            border-color: #ffb74d;
+        }
+        
+        .status-info {
+    <title>Dr. Donut Voice Ordering</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            flex: 1;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .voice-section, .cart-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .voice-controls {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .menu-selector {
+            margin-bottom: 20px;
+        }
+
+        .menu-selector select {
+            padding: 10px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            width: 100%;
+            background: white;
+        }
+
+        .voice-button {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+            min-width: 150px;
+        }
+
+        .voice-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .voice-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .voice-button.listening {
+            background: linear-gradient(135deg, #ff9f43, #f0932b);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .status {
+            margin: 15px 0;
+            padding: 10px 15px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .transcript {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            min-height: 100px;
+            margin: 15px 0;
+        }
+
+        .transcript-label {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #666;
+        }
+
+        .transcript-text {
+            font-size: 1.1rem;
+            line-height: 1.4;
+            color: #333;
+            min-height: 20px;
+        }
+
+        .cart {
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .cart-item:last-child {
+            border-bottom: none;
+        }
+
+        .item-details {
+            flex: 1;
+        }
+
+        .item-name {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .item-details-sub {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .item-price {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .cart-total {
+            border-top: 2px solid #667eea;
+            padding-top: 15px;
+            margin-top: 15px;
+            text-align: right;
+        }
+
+        .total-amount {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .clear-cart {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin-top: 15px;
+            font-size: 0.9rem;
+        }
+
+        .instructions {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+
+        .instructions h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .instructions ul {
+            list-style-position: inside;
+            line-height: 1.6;
+        }
+
+        .instructions li {
+            margin-bottom: 8px;
+            color: #666;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .voice-section, .cart-section {
+                padding: 20px;
+            }
+        }
+
+        .empty-cart {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            padding: 30px;
+        }
+
+        .response {
+            background: #e8f4fd;
+            border: 1px solid #b3d7ff;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .response-label {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #0066cc;
+        }
+
+        .response-text {
+            color: #333;
+            line-height: 1.4;
+        }
+
+        .btn-small {
+            padding: 2px 8px;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            background: #f8f9fa;
+            cursor: pointer;
+        }
+
+        .btn-small:hover {
+            background: #e2e6ea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🍩 Dr. Donut Voice Ordering</h1>
+            <p>Speak your order naturally and watch your cart update in real-time!</p>
+        </div>
+
+        <div class="main-content">
+            <div class="voice-section">
+                <h2 class="section-title">🎤 Voice Input</h2>
+                
+                <div class="menu-selector">
+                    <label for="menu-select"><strong>Choose Menu:</strong></label>
+                    <select id="menu-select">
+                        <option value="small">Small Menu (5 items)</option>
+                        <option value="large">Large Menu (19 items)</option>
+                    </select>
+                </div>
+
+                <div class="voice-controls">
+                    <button id="connect-btn" class="voice-button" disabled>🔗 Connect to Ultravox</button>
+                    <button id="start-btn" class="voice-button" disabled>🎤 Start Recording</button>
+                    <button id="stop-btn" class="voice-button" disabled>⏹ Stop Recording</button>
+                </div>
+
+                <div id="status" class="status info">
+                    🔄 Initializing... Please wait while we set up voice recognition.
+                </div>
+
+                <div class="transcript">
+                    <div class="transcript-label">What you said:</div>
+                    <div id="transcript" class="transcript-text">Your speech will appear here...</div>
+                </div>
+
+                <div class="response">
+                    <div class="response-label">Dr. Donut says:</div>
+                    <div id="response" class="response-text">Welcome to Dr. Donut! What can I get you today?</div>
+                </div>
+            </div>
+
+            <div class="cart-section">
+                <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h2>🛒 Your Cart</h2>
+                    <div class="cart-controls">
+                        <button id="clear-cart-btn" class="btn btn-secondary" onclick="clearCart()" style="margin-right: 10px; padding: 8px 16px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">Clear Cart</button>
+                        <button id="confirm-order-btn" class="btn btn-success" onclick="confirmOrder()" disabled style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Confirm Order & Pay</button>
+                    </div>
+                </div>
+                
+                <div id="cart-items">
+                    <p style="color: #666; font-style: italic;">Your cart is empty</p>
+                </div>
+                <div id="cart-total" style="font-size: 1.2em; font-weight: bold; margin-top: 10px; text-align: right;">
+                    Total: $0.00
+                </div>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h3>How to Order:</h3>
+            <ul>
+                <li><strong>Simple orders:</strong> "I'll have a pumpkin spice latte"</li>
+                <li><strong>With sizes:</strong> "Give me a large coffee"</li>
+                <li><strong>With modifiers:</strong> "I want a latte with almond milk and extra shot"</li>
+                <li><strong>Multiple items:</strong> "I'll take two chocolate donuts and a small coffee"</li>
+                <li><strong>Use aliases:</strong> "Can I get a PSL" (Pumpkin Spice Latte)</li>
+                <li><strong>Corrections:</strong> "Actually, make that a large instead"</li>
+            </ul>
+        </div>
+
+        <div class="order-history" id="order-history" style="margin-top: 40px;">
+            <h2 class="section-title">📜 Order History</h2>
+            <div style="max-height: 300px; overflow-y: auto;">
+                <!-- Order history items will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        let sessionId = null;
+        let socket = null;
+        let mediaRecorder = null;
+        let audioContext = null;
+        let isRecording = false;
+        let isConnectedToUltravox = false;
+        let recordingStream = null;
+
+        // Initialize the application
+        window.onload = function() {
+            initializeSocket();
+            startSession();
+        };
+
+        function initializeSocket() {
+            socket = io();
+            
+            socket.on('connect', function() {
+                console.log('Connected to server');
+                showStatus('🔴 Connected to server! Ready to start voice ordering.', 'success');
+            });
+
+            socket.on('ultravox_connection', function(data) {
+                if (data.success) {
+                    isConnectedToUltravox = true;
+                    showStatus('🎤 Connected to Ultravox! You can now start speaking.', 'success');
+                    document.getElementById('start-btn').disabled = false;
+                } else {
+                    showStatus('❌ Failed to connect to Ultravox. Please try again.', 'error');
+                }
+            });
+
+            socket.on('user_transcript', function(data) {
+                console.log('Received user transcript:', data);
+                const transcriptElement = document.getElementById('transcript');
+                
+                if (data.final) {
+                    // Final transcript - show in bold black
+                    transcriptElement.innerHTML = '<strong style="color: #333; font-weight: bold;">' + data.text + '</strong>';
+                    console.log('Final user transcript:', data.text);
+                } else {
+                    // Interim transcript - show in italic gray
+                    transcriptElement.innerHTML = 
+                        '<span style="color: #666; font-style: italic;">' + data.text + '</span>';
+                    console.log('Interim user transcript:', data.text);
+                }
+            });
+
+            socket.on('agent_response', function(data) {
+                console.log('Received agent response:', data);
+                updateResponse(data.text);
+            });
+
+            socket.on('cart_update', function(data) {
+                console.log('Received cart update:', data);
+                updateCart(data.cart);
+            });
+
+            socket.on('voice_state', function(data) {
+                console.log('Voice state changed:', data.state);
+                if (data.state === 'listening') {
+                    showStatus('🎤 Ultravox is listening...', 'info');
+                } else if (data.state === 'thinking') {
+                    showStatus('🤔 Processing your order...', 'info');
+                } else if (data.state === 'speaking') {
+                    showStatus('🗣️ Dr. Donut is responding...', 'info');
+                }
+            });
+
+            // Initialize when page loads
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('🚀 Page loaded, starting initialization...');
+                
+                // Initialize session immediately
+                initSession();
+                
+                // Load order history (but don't fail if it doesn't work)
+                loadOrderHistory().catch(error => {
+                    console.log('📋 Order history not available yet:', error.message);
+                });
+                
+                console.log('📱 Page initialization complete');
+            });
+
+            socket.on('error', function(data) {
+                showStatus('❌ Error: ' + data.msg, 'error');
+            });
+
+            socket.on('status', function(data) {
+                console.log('Status:', data.msg);
+            });
+        }
+
+        async function startSession() {
+            try {
+                const menuSelect = document.getElementById('menu-select');
+                const response = await fetch(`/api/start_session?menu=${menuSelect.value}`);
+                const data = await response.json();
+                sessionId = data.session_id;
+                
+                console.log('Session started:', data);
+                console.log('Session ID:', sessionId);
+                
+                showStatus('📋 Session started! Click "Connect to Ultravox" to begin.', 'success');
+                console.log('Menu items:', data.menu_items);
+                
+                // Enable connect button
+                document.getElementById('connect-btn').disabled = false;
+            } catch (error) {
+                console.error('Error starting session:', error);
+                showStatus('Error starting session: ' + error.message, 'error');
+            }
+        }
+
+        async function connectToUltravox() {
+            try {
+                console.log('🚀 Connecting to Ultravox with session ID:', sessionId);
+                showStatus('🔄 Connecting to Ultravox...', 'info');
+                document.getElementById('connect-btn').disabled = true;
+                
+                // Set a timeout to show user if connection is taking too long
+                const timeoutWarning = setTimeout(() => {
+                    showStatus('⏰ Connection taking longer than expected... Please wait', 'warning');
+                }, 10000); // 10 seconds
+                
+                const failureTimeout = setTimeout(() => {
+                    showStatus('❌ Connection timeout. Please try again.', 'error');
+                    document.getElementById('connect-btn').disabled = false;
+                    clearTimeout(timeoutWarning);
+                }, 30000); // 30 seconds
+                
+                // Store timeouts for cleanup
+                window.connectionTimeouts = { timeoutWarning, failureTimeout };
+                
+                socket.emit('start_ultravox', {session_id: sessionId});
+                
+            } catch (error) {
+                console.error('❌ Error connecting to Ultravox:', error);
+                showStatus('Error connecting to Ultravox: ' + error.message, 'error');
+                document.getElementById('connect-btn').disabled = false;
+            }
+        }
+
+        async function startRecording() {
+            if (!isConnectedToUltravox) {
+                showStatus('❌ Please connect to Ultravox first!', 'error');
+                return;
+            }
+
+            try {
+                console.log('🎤 Starting audio recording...');
+                
+                // Request microphone access
+                recordingStream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        sampleRate: 48000,
+                        channelCount: 1,
+                        echoCancellation: true,
+                        noiseSuppression: true
+                    } 
+                });
+
+                console.log('✅ Microphone access granted');
+
+                // Create audio context for processing
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                    sampleRate: 48000
+                });
+
+                console.log('✅ Audio context created, sample rate:', audioContext.sampleRate);
+
+                const source = audioContext.createMediaStreamSource(recordingStream);
+                
+                // Create script processor for real-time audio data
+                const processor = audioContext.createScriptProcessor(4096, 1, 1);
+                
+                let audioChunkCount = 0;
+                
+                processor.onaudioprocess = function(e) {
+                    if (isRecording) {
+                        const inputData = e.inputBuffer.getChannelData(0);
+                        audioChunkCount++;
+                        
+                        // Check for audio signal
+                        const maxLevel = Math.max(...inputData.map(Math.abs));
+                        const rmsLevel = Math.sqrt(inputData.reduce((sum, x) => sum + x*x, 0) / inputData.length);
+                        
+                        if (audioChunkCount <= 10) {
+                            console.log(`🔊 Audio chunk #${audioChunkCount}, samples: ${inputData.length}, max: ${maxLevel.toFixed(4)}, rms: ${rmsLevel.toFixed(4)}`);
+                        }
+                        
+                        // Only process if there's actual audio signal
+                        if (maxLevel < 0.001) {
+                            if (audioChunkCount <= 5) {
+                                console.log('⚠️ Very low audio level detected, might be silence');
+                            }
+                            // Still send silence - Ultravox needs continuous audio
+                        }
+                        
+                        // Convert to 16-bit PCM - EXACTLY like sounddevice does
+                        const pcmData = new Int16Array(inputData.length);
+                        for (let i = 0; i < inputData.length; i++) {
+                            // Clamp to [-1, 1] then scale to 16-bit range
+                            const sample = Math.max(-1, Math.min(1, inputData[i]));
+                            pcmData[i] = Math.round(sample * 32767);
+                        }
+                        
+                        // Convert to bytes (little-endian like sounddevice)
+                        const audioBytes = new Uint8Array(pcmData.buffer);
+                        const base64Audio = btoa(String.fromCharCode.apply(null, audioBytes));
+                        
+                        // Debug: Log audio data being sent (first few times only)
+                        if (audioChunkCount <= 3) {
+                            console.log(`📤 Sending audio chunk #${audioChunkCount}:`, 
+                                audioBytes.length, 'bytes, PCM range:', 
+                                Math.min(...pcmData), 'to', Math.max(...pcmData),
+                                'Base64 length:', base64Audio.length);
+                        }
+                        
+                        socket.emit('audio_data', {
+                            audio: base64Audio,
+                            session_id: sessionId
+                        });
+                    }
+                };
+
+                source.connect(processor);
+                processor.connect(audioContext.destination);
+
+                isRecording = true;
+                updateButtons();
+                showStatus('🎤 Recording! Speak your order now...', 'info');
+                document.getElementById('transcript').innerHTML = '<em style="color: #999;">🎤 Listening for your voice...</em>';
+                
+                console.log('🎤 Audio recording started successfully');
+
+            } catch (error) {
+                showStatus('❌ Error accessing microphone: ' + error.message, 'error');
+                console.error('❌ Microphone error:', error);
+            }
+        }
+
+        function stopRecording() {
+            if (recordingStream) {
+                recordingStream.getTracks().forEach(track => track.stop());
+                recordingStream = null;
+            }
+
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+
+            isRecording = false;
+            updateButtons();
+            showStatus('✋ Stopped recording. Click "Start Recording" to continue.', 'info');
+        }
+
+        async function processVoiceInput(text) {
+            // This function is no longer needed since Ultravox handles the processing
+            // But we keep it for compatibility
+            console.log('Voice input processed by Ultravox:', text);
+        }
+
+        function updateCart(cart) {
+            const cartItemsDiv = document.getElementById('cart-items');
+            const cartTotalDiv = document.getElementById('cart-total');
+            
+            if (!cart.items || cart.items.length === 0) {
+                cartItemsDiv.innerHTML = '<p style="color: #666; font-style: italic;">Your cart is empty</p>';
+                cartTotalDiv.innerHTML = 'Total: $0.00';
+                const confirmBtn = document.getElementById('confirm-order-btn');
+                if (confirmBtn) confirmBtn.disabled = true;
+                return;
+            }
+            
+            let html = '<div class="cart-items-list">';
+            cart.items.forEach((item, index) => {
+                const sizeStr = item.size ? ` (${item.size})` : '';
+                const modifiersStr = item.modifiers && item.modifiers.length > 0 ? ` [${item.modifiers.join(', ')}]` : '';
+                const itemTotal = (item.price * item.quantity).toFixed(2);
+                
+                html += `
+                    <div class="cart-item" style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee;">
+                        <div class="item-info">
+                            <strong>${item.name}${sizeStr}${modifiersStr}</strong><br>
+                            <small>$${item.price.toFixed(2)} each</small>
+                        </div>
+                        <div class="quantity-controls" style="display: flex; align-items: center; gap: 10px;">
+                            <button onclick="updateItemQuantity(${index}, ${item.quantity - 1})" class="btn-small" style="padding: 2px 8px; font-size: 14px; border: 1px solid #ddd; background: #f8f9fa; cursor: pointer;">-</button>
+                            <span style="font-weight: bold; min-width: 20px; text-align: center;">${item.quantity}</span>
+                            <button onclick="updateItemQuantity(${index}, ${item.quantity + 1})" class="btn-small" style="padding: 2px 8px; font-size: 14px; border: 1px solid #ddd; background: #f8f9fa; cursor: pointer;">+</button>
+                            <span style="margin-left: 10px; font-weight: bold;">$${itemTotal}</span>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            
+            cartItemsDiv.innerHTML = html;
+            cartTotalDiv.innerHTML = `Total: $${cart.total.toFixed(2)}`;
+            const confirmBtn = document.getElementById('confirm-order-btn');
+            if (confirmBtn) confirmBtn.disabled = false;
+        }
+
+        async function updateItemQuantity(itemIndex, newQuantity) {
+            try {
+                const response = await fetch('/api/update_item_quantity', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        item_index: itemIndex,
+                        quantity: newQuantity
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    updateCart(result.cart);
+                } else {
+                    showStatus('Error updating quantity: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showStatus('Error updating quantity: ' + error.message, 'error');
+            }
+        }
+
+        async function clearCart() {
+            try {
+                const response = await fetch('/api/clear_cart', {
+                    method: 'POST'
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    updateCart(result.cart);
+                    showStatus('🗑️ Cart cleared', 'info');
+                } else {
+                    showStatus('Error clearing cart: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showStatus('Error clearing cart: ' + error.message, 'error');
+            }
+        }
+
+        async function confirmOrder() {
+            try {
+                const response = await fetch('/api/confirm_order', {
+                    method: 'POST'
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showStatus('✅ ' + result.message, 'success');
+                    updateCart({items: [], total: 0}); // Clear the display
+                    loadOrderHistory(); // Refresh order history
+                    
+                    // Show celebration message
+                    setTimeout(() => {
+                        showStatus('🎉 Ready for your next order!', 'info');
+                    }, 2000);
+                } else {
+                    showStatus('Error confirming order: ' + result.message, 'error');
+                }
+            } catch (error) {
+                showStatus('Error confirming order: ' + error.message, 'error');
+            }
+        }
+
+        async function loadOrderHistory() {
+            try {
+                const response = await fetch('/api/get_order_history');
+                if (!response.ok) {
+                    console.log('⚠️ Order history not available:', response.status);
+                    return;
+                }
+                
+                const result = await response.json();
+                
+                const historyDiv = document.getElementById('order-history');
+                if (!historyDiv) {
+                    console.log('📋 Order history div not found');
+                    return;
+                }
+                
+                if (!result.history || result.history.length === 0) {
+                    historyDiv.innerHTML = '<p style="color: #666; font-style: italic;">No confirmed orders yet</p>';
+                    return;
+                }
+                
+                let html = '';
+                result.history.forEach((order, index) => {
+                    const orderDate = new Date(order.timestamp).toLocaleString();
+                    html += `
+                        <div class="order-item" style="border: 1px solid #ddd; padding: 10px; margin: 5px 0; border-radius: 5px; background: #f8f9fa;">
+                            <strong>Order #${index + 1}</strong> - ${orderDate}
+                            <div style="margin: 5px 0;">
+                                ${order.items.map(item => `${item.quantity}x ${item.name} ($${(item.price * item.quantity).toFixed(2)})`).join(', ')}
+                            </div>
+                            <strong style="color: #28a745;">Total: $${order.total.toFixed(2)}</strong>
+                        </div>
+                    `;
+                });
+                
+                historyDiv.innerHTML = html;
+                console.log('📋 Order history loaded successfully');
+                
+            } catch (error) {
+                console.log('📋 Order history failed to load:', error.message);
+                const historyDiv = document.getElementById('order-history');
+                if (historyDiv) {
+                    historyDiv.innerHTML = '<p style="color: #666; font-style: italic;">Order history unavailable</p>';
+                }
+            }
+        }
+
+        // Enhanced initialization function
+        async function initSession() {
+            try {
+                console.log('🚀 Starting session initialization...');
+                showStatus('🔄 Setting up session...', 'info');
+                
+                const response = await fetch('/api/start_session?menu=small');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                sessionId = data.session_id;
+                
+                console.log('✅ Session created:', sessionId);
+                console.log('📋 Menu items loaded:', data.menu_items?.length || 0);
+                
+                // Update status based on whether session was reused
+                if (data.reused) {
+                    showStatus('🔄 Session restored. Ready to connect to Ultravox!', 'success');
+                } else {
+                    showStatus('✅ Session ready! Click "Connect to Ultravox" to begin.', 'success');
+                }
+                
+                // Enable the connect button
+                updateButtons();
+                
+                console.log('🎉 Initialization complete!');
+                
+            } catch (error) {
+                console.error('❌ Session initialization failed:', error);
+                showStatus('❌ Failed to initialize: ' + error.message + '. Please refresh the page.', 'error');
+            }
+        }
+
+        // Fix the showStatus function to handle all types
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            if (statusDiv) {
+                statusDiv.textContent = message;
+                
+                // Remove all status classes
+                statusDiv.classList.remove('status-success', 'status-error', 'status-info', 'status-warning');
+                
+                // Add appropriate class
+                statusDiv.classList.add('status-' + type);
+                
+                console.log(`[${type.toUpperCase()}] ${message}`);
+            }
+        }
+
+        // Override the existing updateButtons function
+        function updateButtons() {
+            try {
+                const connectBtn = document.getElementById('connect-btn');
+                const recordBtn = document.getElementById('record-btn');
+                const stopBtn = document.getElementById('stop-btn');
+                
+                console.log('🔄 Updating buttons - sessionId:', !!sessionId, 'connected:', isConnectedToUltravox, 'recording:', isRecording);
+                
+                if (connectBtn) {
+                    connectBtn.disabled = !sessionId || isConnectedToUltravox;
+                    connectBtn.textContent = isConnectedToUltravox ? '✅ Connected to Ultravox' : 'Connect to Ultravox';
+                    console.log('Connect button enabled:', !connectBtn.disabled);
+                }
+                
+                if (recordBtn) {
+                    recordBtn.disabled = !isConnectedToUltravox || isRecording;
+                    console.log('Record button enabled:', !recordBtn.disabled);
+                }
+                
+                if (stopBtn) {
+                    stopBtn.disabled = !isRecording;
+                    console.log('Stop button enabled:', !stopBtn.disabled);
+                }
+                
+            } catch (error) {
+                console.error('❌ Error updating buttons:', error);
+            }
+        }
+
+        // Event listeners
+        document.getElementById('connect-btn').onclick = connectToUltravox;
+        document.getElementById('start-btn').onclick = startListening;
+        document.getElementById('stop-btn').onclick = stopListening;
+        document.getElementById('menu-select').onchange = function() {
+            startSession(); // Restart session with new menu
+        };
+    </script>
+</body>
+</html>

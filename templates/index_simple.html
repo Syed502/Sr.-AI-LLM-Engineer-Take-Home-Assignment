@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dr. Donut - Voice Ordering System</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f8f9fa; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; border: none; border-radius: 4px; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .status-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .status-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .status-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍩 Dr. Donut Voice Ordering System</h1>
+        
+        <div class="section">
+            <h2>📊 Status</h2>
+            <div id="status" class="status status-info">Initializing...</div>
+            <div style="margin-top: 10px;">
+                <strong>Session:</strong> <span id="session-display">Loading...</span><br>
+                <strong>Ultravox:</strong> <span id="ultravox-display">Not connected</span><br>
+                <strong>Recording:</strong> <span id="recording-display">Stopped</span><br>
+                <strong>Voice State:</strong> <span id="voice-state-display">idle</span>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>🎤 Voice Controls</h2>
+            <button id="connect-btn" class="btn-primary" onclick="connectToUltravox()" disabled>Connect to Ultravox</button>
+                        <button id="record-btn" onclick="startRecording()" disabled>Start Recording</button>
+            <button id="stop-btn" onclick="stopRecording()" disabled>Stop Recording</button>
+            <button onclick="testSocket()" style="background: #007bff; color: white;">Test Socket</button>
+            <button onclick="forceTranscript()" style="background: #28a745; color: white;">Force Transcript</button>
+            <button onclick="debugAudio()" style="background: #dc3545; color: white;">Debug Audio</button>
+            <button onclick="flushAudio()" style="background: #ffc107; color: black;">Flush Audio</button>
+        </div>
+            <br><br>
+            <button onclick="resetAllSessions()" class="btn-secondary">Reset All Sessions</button>
+        </div>
+        
+        <div class="section">
+            <h2>💬 Conversation</h2>
+            <div><strong>You said:</strong> <span id="transcript" style="font-style: italic;">Ready to listen...</span></div>
+            <div style="margin-top: 10px;"><strong>Dr. Donut says:</strong> <span id="response">Waiting for connection...</span></div>
+        </div>
+        
+        <div class="section">
+            <h2>🛒 Your Cart</h2>
+            <div id="cart-items">Your cart is empty</div>
+            <div id="cart-total" style="font-weight: bold; margin-top: 10px;">Total: $0.00</div>
+            <div style="margin-top: 10px;">
+                <button onclick="clearCart()" class="btn-secondary">Clear Cart</button>
+                <button id="confirm-btn" onclick="confirmOrder()" class="btn-success" disabled>Confirm & Pay</button>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>📋 Order History</h2>
+            <div id="order-history">No orders yet</div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        // Global variables
+        let sessionId = null;
+        let isConnectedToUltravox = false;
+        let isRecording = false;
+        let audioContext = null;
+        let recordingStream = null;
+        const socket = io();
+
+        // Test Socket.IO connection
+        function testSocket() {
+            console.log('🧪 Testing Socket.IO connection...');
+            fetch('/api/test_emit')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('✅ Test emit response:', data);
+                    showStatus('✅ Socket.IO test sent - check console', 'success');
+                })
+                .catch(error => {
+                    console.error('❌ Test emit failed:', error);
+                    showStatus('❌ Socket.IO test failed', 'error');
+                });
+        }
+
+        // Force transcript for debugging
+        function forceTranscript() {
+            console.log('🧪 Forcing transcript emission...');
+            fetch('/api/force_transcript')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('✅ Force transcript response:', data);
+                    showStatus('✅ Forced transcript sent - check display', 'success');
+                })
+                .catch(error => {
+                    console.error('❌ Force transcript failed:', error);
+                    showStatus('❌ Force transcript failed', 'error');
+                });
+        }
+
+        // Debug audio processor
+        function debugAudio() {
+            console.log('🧪 Debugging audio processor...');
+            fetch('/api/debug_audio_processor')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('🔍 Audio processor debug:', data);
+                    const summary = `Audio Queue: ${data.queue_size} chunks, Connected: ${data.is_connected}, Running: ${data.is_running}, Tasks: Listen=${data.has_listen_task}, Audio=${data.has_audio_task}`;
+                    showStatus(summary, 'info');
+                })
+                .catch(error => {
+                    console.error('❌ Audio debug failed:', error);
+                    showStatus('❌ Audio debug failed', 'error');
+                });
+        }
+
+        // Force flush audio queue
+        function flushAudio() {
+            console.log('🧪 Force flushing audio queue...');
+            fetch('/api/force_audio_flush')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('💨 Audio flush result:', data);
+                    showStatus(`💨 Flushed ${data.processed} chunks, ${data.remaining_queue_size} remaining`, 'success');
+                })
+                .catch(error => {
+                    console.error('❌ Audio flush failed:', error);
+                    showStatus('❌ Audio flush failed', 'error');
+                });
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Page loaded, initializing...');
+            initSession();
+            loadOrderHistory();
+        });
+
+        // Session initialization with better error handling
+        async function initSession() {
+            try {
+                showStatus('🔄 Creating session...', 'info');
+                
+                const response = await fetch('/api/start_session?menu=small');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                sessionId = data.session_id;
+                
+                console.log('✅ Session created:', sessionId);
+                console.log('📋 Session data:', data);
+                
+                if (data.reused && data.connected) {
+                    isConnectedToUltravox = true;
+                    showStatus('✅ Previous session restored and connected! Start recording to speak.', 'success');
+                } else if (data.reused) {
+                    showStatus('🔄 Previous session restored. Connect to Ultravox to begin.', 'success');
+                } else {
+                    showStatus('✅ New session created. Connect to Ultravox to begin.', 'success');
+                }
+                
+                updateDisplays();
+                
+            } catch (error) {
+                console.error('❌ Session failed:', error);
+                showStatus('❌ Session failed: ' + error.message + '. Trying to reset...', 'error');
+                
+                // Try to reset all sessions and create a new one
+                await resetAllSessions();
+            }
+        }
+
+        // Reset all sessions and start fresh
+        async function resetAllSessions() {
+            try {
+                showStatus('🔄 Resetting all sessions...', 'info');
+                
+                const response = await fetch('/api/reset_sessions', { method: 'POST' });
+                const result = await response.json();
+                
+                if (result.success) {
+                    console.log('✅ Sessions reset successfully');
+                    showStatus('🔄 Sessions reset. Creating new session...', 'info');
+                    
+                    // Wait a bit then try to create a new session
+                    setTimeout(() => {
+                        initSession();
+                    }, 1000);
+                } else {
+                    throw new Error(result.error || 'Reset failed');
+                }
+                
+            } catch (error) {
+                console.error('❌ Reset failed:', error);
+                showStatus('❌ Reset failed: ' + error.message + '. Please refresh the page.', 'error');
+            }
+        }
+
+        // Connect to Ultravox with better error handling
+        async function connectToUltravox() {
+            if (!sessionId) {
+                showStatus('❌ No session available. Please refresh the page.', 'error');
+                return;
+            }
+            
+            showStatus('🔄 Connecting to Ultravox...', 'info');
+            document.getElementById('connect-btn').disabled = true;
+            
+            // Set up timeout warning
+            const warningTimeout = setTimeout(() => {
+                showStatus('⏰ Connection taking longer than expected...', 'warning');
+            }, 10000);
+            
+            // Set up final timeout
+            const finalTimeout = setTimeout(() => {
+                showStatus('❌ Connection timeout. Please try again.', 'error');
+                document.getElementById('connect-btn').disabled = false;
+                document.getElementById('connect-btn').textContent = 'Connect to Ultravox';
+            }, 30000);
+            
+            try {
+                // Clear any existing connection handlers
+                socket.off('ultravox_connection');
+                
+                // Set up one-time connection handler
+                socket.once('ultravox_connection', function(data) {
+                    clearTimeout(warningTimeout);
+                    clearTimeout(finalTimeout);
+                    
+                    console.log('🎯 Ultravox connection result:', data);
+                    
+                    if (data.success) {
+                        isConnectedToUltravox = true;
+                        showStatus('✅ Connected to Ultravox! Start recording to speak.', 'success');
+                    } else {
+                        showStatus('❌ Ultravox connection failed: ' + (data.error || 'Unknown error'), 'error');
+                        document.getElementById('connect-btn').disabled = false;
+                        document.getElementById('connect-btn').textContent = 'Connect to Ultravox';
+                    }
+                    updateDisplays();
+                });
+                
+                // Send connection request
+                socket.emit('start_ultravox', {session_id: sessionId});
+                
+            } catch (error) {
+                clearTimeout(warningTimeout);
+                clearTimeout(finalTimeout);
+                console.error('❌ Connection error:', error);
+                showStatus('❌ Connection error: ' + error.message, 'error');
+                document.getElementById('connect-btn').disabled = false;
+                updateDisplays();
+            }
+        }
+
+        // Start recording with improved error handling
+        async function startRecording() {
+            if (!isConnectedToUltravox) {
+                showStatus('❌ Please connect to Ultravox first', 'error');
+                return;
+            }
+            
+            try {
+                console.log('🎤 Starting recording...');
+                showStatus('🎤 Getting microphone access...', 'info');
+                
+                recordingStream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        sampleRate: 48000,
+                        channelCount: 1,
+                        echoCancellation: true,
+                        noiseSuppression: true
+                    }
+                });
+                
+                audioContext = new AudioContext({ sampleRate: 48000 });
+                
+                const source = audioContext.createMediaStreamSource(recordingStream);
+                const processor = audioContext.createScriptProcessor(4096, 1, 1);
+                
+                let audioChunkCount = 0;
+                
+                processor.onaudioprocess = function(e) {
+                    if (isRecording && sessionId) {
+                        const inputData = e.inputBuffer.getChannelData(0);
+                        const pcmData = new Int16Array(inputData.length);
+                        for (let i = 0; i < inputData.length; i++) {
+                            pcmData[i] = Math.round(inputData[i] * 32767);
+                        }
+                        
+                        const audioBytes = new Uint8Array(pcmData.buffer);
+                        const base64Audio = btoa(String.fromCharCode.apply(null, audioBytes));
+                        
+                        audioChunkCount++;
+                        
+                        // Send audio data with session ID
+                        socket.emit('audio_data', {
+                            audio: base64Audio,
+                            session_id: sessionId
+                        });
+                        
+                        // Log first few chunks for debugging
+                        if (audioChunkCount <= 5) {
+                            console.log(`📡 Sent audio chunk #${audioChunkCount}, size: ${audioBytes.length} bytes`);
+                        }
+                    }
+                };
+                
+                source.connect(processor);
+                processor.connect(audioContext.destination);
+                
+                isRecording = true;
+                updateDisplays();
+                showStatus('🎤 Recording! Speak your order now...', 'success');
+                
+                console.log('✅ Recording started successfully');
+                
+            } catch (error) {
+                console.error('❌ Recording failed:', error);
+                showStatus('❌ Recording failed: ' + error.message + '. Please check microphone permissions.', 'error');
+            }
+        }
+
+        // Stop recording
+        function stopRecording() {
+            isRecording = false;
+            if (recordingStream) {
+                recordingStream.getTracks().forEach(track => track.stop());
+            }
+            if (audioContext) {
+                audioContext.close();
+            }
+            updateDisplays();
+            showStatus('⏸️ Recording stopped', 'info');
+        }
+
+        // Clear cart
+        async function clearCart() {
+            try {
+                const response = await fetch('/api/clear_cart', { method: 'POST' });
+                const result = await response.json();
+                if (result.success) {
+                    updateCart(result.cart);
+                    showStatus('🗑️ Cart cleared', 'info');
+                }
+            } catch (error) {
+                showStatus('❌ Clear failed: ' + error.message, 'error');
+            }
+        }
+
+        // Confirm order with success handling
+        async function confirmOrder() {
+            try {
+                showStatus('🔄 Processing your order...', 'info');
+                
+                const response = await fetch('/api/confirm_order', { method: 'POST' });
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Show success message
+                    showOrderSuccessMessage(result);
+                    
+                    // Reset connection state to allow new order
+                    isConnectedToUltravox = false;
+                    updateDisplays();
+                    
+                    // Clear conversation display
+                    document.getElementById('transcript').textContent = 'Ready for new order...';
+                    document.getElementById('response').textContent = 'Click "Connect to Ultravox" to start a new order';
+                    
+                    showStatus('✅ Order placed! Ready for new order - click "Connect to Ultravox"', 'success');
+                } else {
+                    showStatus(`❌ Order failed: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error confirming order:', error);
+                showStatus(`❌ Order error: ${error.message}`, 'error');
+            }
+        }
+
+        // Show order success message
+        function showOrderSuccessMessage(result) {
+            const message = `🎉 ORDER PLACED SUCCESSFULLY!\n\n` +
+                           `Order #${result.order.order_id}\n` +
+                           `${result.items_count} items - Total: $${result.order.total.toFixed(2)}\n\n` +
+                           `Thank you for your order!`;
+            
+            // Create success popup
+            const popup = document.createElement('div');
+            popup.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: white;
+                border: 3px solid #28a745;
+                border-radius: 15px;
+                padding: 30px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                z-index: 2000;
+                text-align: center;
+                font-family: Arial, sans-serif;
+                max-width: 400px;
+                animation: slideIn 0.3s ease-out;
+            `;
+            
+            popup.innerHTML = `
+                <div style="font-size: 24px; margin-bottom: 15px;">🎉</div>
+                <h2 style="color: #28a745; margin: 0 0 15px 0;">ORDER PLACED!</h2>
+                <div style="font-size: 16px; margin-bottom: 10px;"><strong>Order #${result.order.order_id}</strong></div>
+                <div style="font-size: 14px; color: #666; margin-bottom: 15px;">
+                    ${result.items_count} items - <strong>$${result.order.total.toFixed(2)}</strong>
+                </div>
+                <div style="font-size: 12px; color: #888; margin-bottom: 20px;">
+                    ${new Date(result.order.timestamp).toLocaleString()}
+                </div>
+                <button onclick="this.parentElement.remove()" 
+                        style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
+                    Start New Order
+                </button>
+            `;
+            
+            // Add animation style
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes slideIn {
+                    from { transform: translate(-50%, -60%); opacity: 0; }
+                    to { transform: translate(-50%, -50%); opacity: 1; }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            document.body.appendChild(popup);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (popup.parentNode) {
+                    popup.remove();
+                }
+            }, 5000);
+        }
+
+        // Update cart display with better formatting
+        function updateCart(cart) {
+            const cartDiv = document.getElementById('cart-items');
+            const totalDiv = document.getElementById('cart-total');
+            const confirmBtn = document.getElementById('confirm-btn');
+            
+            console.log('🛒 Updating cart display:', cart);
+            
+            if (!cart.items || cart.items.length === 0) {
+                cartDiv.innerHTML = '<div style="color: #6c757d; font-style: italic;">Your cart is empty</div>';
+                totalDiv.innerHTML = 'Total: $0.00';
+                confirmBtn.disabled = true;
+                return;
+            }
+            
+            let html = '<div class="cart-items">';
+            cart.items.forEach((item, index) => {
+                const itemTotal = (item.price * item.quantity).toFixed(2);
+                const sizeStr = item.size ? ` (${item.size})` : '';
+                const modifiersStr = item.modifiers && item.modifiers.length > 0 ? 
+                    ` [${item.modifiers.join(', ')}]` : '';
+                
+                html += `
+                    <div class="cart-item" style="padding: 8px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong>${item.quantity}x ${item.name}${sizeStr}</strong>
+                            ${modifiersStr}
+                            <div style="font-size: 0.9em; color: #666;">$${item.price.toFixed(2)} each</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-weight: bold;">$${itemTotal}</div>
+                            <button onclick="updateItemQuantity(${index}, ${item.quantity - 1})" 
+                                    style="font-size: 12px; padding: 2px 6px; margin: 2px;">-</button>
+                            <span style="margin: 0 8px;">${item.quantity}</span>
+                            <button onclick="updateItemQuantity(${index}, ${item.quantity + 1})" 
+                                    style="font-size: 12px; padding: 2px 6px; margin: 2px;">+</button>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            
+            cartDiv.innerHTML = html;
+            totalDiv.innerHTML = `<strong>Total: $${cart.total.toFixed(2)}</strong>`;
+            confirmBtn.disabled = false;
+            
+            // Show a brief notification for cart updates
+            if (cart.items.length > 0) {
+                showCartNotification(`Cart updated: ${cart.items.length} item(s)`);
+            }
+        }
+
+        // Show cart update notification
+        function showCartNotification(message) {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #28a745;
+                color: white;
+                padding: 10px 15px;
+                border-radius: 5px;
+                z-index: 1000;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+                transition: opacity 0.3s;
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
+            }, 2000);
+        }
+
+        // Update item quantity
+        async function updateItemQuantity(itemIndex, newQuantity) {
+            try {
+                const response = await fetch('/api/update_item_quantity', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        item_index: itemIndex,
+                        quantity: newQuantity
+                    })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    updateCart(result.cart);
+                    showStatus(`✅ Updated item quantity`, 'success');
+                } else {
+                    showStatus(`❌ Failed to update quantity: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error updating quantity:', error);
+                showStatus(`❌ Error updating quantity: ${error.message}`, 'error');
+            }
+        }
+
+        // Update order history display
+        function updateOrderHistory(history) {
+            const historyDiv = document.getElementById('order-history');
+            
+            if (!history || history.length === 0) {
+                historyDiv.innerHTML = '<div style="color: #6c757d; font-style: italic;">No orders yet</div>';
+                return;
+            }
+            
+            let html = '<div class="order-history">';
+            history.slice(-3).reverse().forEach((order, index) => {
+                const date = new Date(order.timestamp).toLocaleDateString();
+                const time = new Date(order.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                
+                html += `
+                    <div class="order-item" style="padding: 12px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 10px; background: #f8f9fa;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <strong>Order #${order.order_id}</strong>
+                            <span style="font-size: 0.9em; color: #666;">${date} ${time}</span>
+                        </div>
+                        <div style="font-size: 0.9em; color: #666; margin-bottom: 8px;">
+                            ${order.items.length} item(s) - <strong style="color: #28a745;">$${order.total.toFixed(2)}</strong>
+                        </div>
+                        <div style="font-size: 0.8em; color: #888;">
+                            ${order.items.map(item => `${item.quantity}x ${item.name}`).join(', ')}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            if (history.length > 3) {
+                html += `<div style="text-align: center; color: #666; font-size: 0.9em;">... and ${history.length - 3} more orders</div>`;
+            }
+            
+            html += '</div>';
+            historyDiv.innerHTML = html;
+        }
+
+        // Load order history on page load
+        async function loadOrderHistory() {
+            try {
+                const response = await fetch('/api/get_order_history');
+                const result = await response.json();
+                updateOrderHistory(result.history);
+            } catch (error) {
+                console.log('Order history not available:', error);
+            }
+        }
+
+        // Update all displays including voice state
+        function updateDisplays() {
+            document.getElementById('session-display').textContent = sessionId ? 'Connected' : 'Not connected';
+            document.getElementById('ultravox-display').textContent = isConnectedToUltravox ? 'Connected' : 'Not connected';
+            document.getElementById('recording-display').textContent = isRecording ? 'Recording' : 'Stopped';
+            
+            // Update voice state display color
+            const voiceStateDisplay = document.getElementById('voice-state-display');
+            if (!isConnectedToUltravox) {
+                voiceStateDisplay.textContent = 'disconnected';
+                voiceStateDisplay.style.color = '#dc3545';
+            }
+            
+            document.getElementById('connect-btn').disabled = !sessionId || isConnectedToUltravox;
+            document.getElementById('record-btn').disabled = !isConnectedToUltravox || isRecording;
+            document.getElementById('stop-btn').disabled = !isRecording;
+        }
+
+        // Show status message
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = 'status status-' + type;
+            console.log(`[${type}] ${message}`);
+        }
+
+        // Socket event handlers for full ASR → LLM → TTS → Cart pipeline
+        socket.on('connect', () => {
+            console.log('🔌 Socket connected');
+            showStatus('🔌 Connected to server. Initializing session...', 'info');
+        });
+        
+        socket.on('disconnect', () => {
+            console.log('🔌 Socket disconnected');
+            showStatus('🔌 Disconnected from server. Please refresh if needed.', 'warning');
+        });
+        
+        socket.on('ultravox_connection', function(data) {
+            console.log('🎯 Ultravox connection event:', data);
+            if (data.success) {
+                isConnectedToUltravox = true;
+                showStatus('✅ Connected to Ultravox! Start recording to speak.', 'success');
+            } else {
+                isConnectedToUltravox = false;
+                showStatus('❌ Ultravox connection failed: ' + (data.error || 'Unknown error'), 'error');
+                document.getElementById('connect-btn').disabled = false;
+                document.getElementById('connect-btn').textContent = 'Connect to Ultravox';
+            }
+            updateDisplays();
+        });
+        
+        // ASR: Handle user transcript (speech recognition)
+        socket.on('user_transcript', function(data) {
+            console.log('🗣️ User transcript received:', data);
+            const transcriptElement = document.getElementById('transcript');
+            if (data.final) {
+                transcriptElement.textContent = data.text;
+                transcriptElement.style.fontStyle = 'normal';
+                transcriptElement.style.color = '#000';
+                console.log('✅ Final user transcript displayed:', data.text);
+            } else {
+                // Show interim transcript in italics
+                transcriptElement.textContent = data.text + '...';
+                transcriptElement.style.fontStyle = 'italic';
+                transcriptElement.style.color = '#666';
+                console.log('⏳ Interim user transcript displayed:', data.text);
+            }
+        });
+        
+        // LLM + TTS: Handle agent response (language model + text-to-speech)
+        socket.on('agent_response', function(data) {
+            console.log('🤖 Agent response received:', data);
+            const responseElement = document.getElementById('response');
+            if (data.final) {
+                responseElement.textContent = data.text;
+                responseElement.style.fontStyle = 'normal';
+                responseElement.style.color = '#000';
+                console.log('✅ Final agent response displayed:', data.text);
+            } else {
+                // Show interim response in italics
+                responseElement.textContent = data.text + '...';
+                responseElement.style.fontStyle = 'italic';
+                responseElement.style.color = '#666';
+                console.log('⏳ Interim agent response displayed:', data.text);
+            }
+        });
+        
+        // Voice state changes (listening, thinking, speaking)
+        socket.on('voice_state', function(data) {
+            console.log('🔄 Voice state:', data.state);
+            const stateDisplay = document.getElementById('voice-state-display');
+            stateDisplay.textContent = data.state;
+            
+            // Update status based on voice state
+            switch(data.state) {
+                case 'listening':
+                    stateDisplay.style.color = '#28a745';
+                    if (isRecording) {
+                        showStatus('👂 Listening... speak now', 'info');
+                    }
+                    break;
+                case 'thinking':
+                    stateDisplay.style.color = '#ffc107';
+                    showStatus('🤔 Processing your order...', 'info');
+                    break;
+                case 'speaking':
+                    stateDisplay.style.color = '#17a2b8';
+                    showStatus('🗣️ Dr. Donut is responding...', 'info');
+                    break;
+                default:
+                    stateDisplay.style.color = '#6c757d';
+            }
+        });
+        
+        // Cart updates (the final result of the pipeline)
+        socket.on('cart_update', function(data) {
+            console.log('🛒 Cart update:', data);
+            updateCart(data.cart);
+        });
+        
+        // Order confirmation events
+        socket.on('order_confirmed', function(data) {
+            console.log('🎉 Order confirmed:', data);
+            showOrderSuccessMessage(data);
+        });
+        
+        // Order history updates
+        socket.on('order_history_update', function(data) {
+            console.log('📋 Order history updated:', data);
+            updateOrderHistory(data.history);
+        });
+        
+        socket.on('error', function(data) {
+            console.error('Socket error:', data);
+            showStatus('❌ Error: ' + data.msg, 'error');
+        });
+        
+        socket.on('status', function(data) {
+            console.log('📊 Status:', data.msg);
+        });
+    </script>
+</body>
+</html>

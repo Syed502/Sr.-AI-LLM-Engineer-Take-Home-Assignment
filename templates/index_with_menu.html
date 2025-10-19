@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dr. Donut - Voice Ordering System</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            padding: 10px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-size: 14px;
+        }
+        .container { 
+            max-width: 1600px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 15px; 
+            border-radius: 10px; 
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15); 
+        }
+        h1 { 
+            color: #333; 
+            text-align: center; 
+            margin-bottom: 5px;
+            font-size: 1.8em;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+        }
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .section { 
+            background: #f8f9fa; 
+            padding: 12px; 
+            border-radius: 8px; 
+            border: 1px solid #e0e0e0;
+        }
+        .section h2 { 
+            margin-top: 0; 
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 1.1em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 6px;
+        }
+        button { 
+            padding: 12px 20px; 
+            margin: 5px; 
+            cursor: pointer; 
+            border: none; 
+            border-radius: 6px; 
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-warning { background: #ffc107; color: #333; }
+        button:disabled { background: #ccc; cursor: not-allowed; opacity: 0.6; }
+        .status { 
+            padding: 12px; 
+            margin: 10px 0; 
+            border-radius: 6px; 
+            font-weight: 500;
+        }
+        .status-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .status-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .status-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        
+        /* Menu Selection Styles */
+        .menu-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+        }
+        .menu-option {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        .menu-option:hover {
+            border-color: #667eea;
+            background: #f8f9fa;
+        }
+        .menu-option.active {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+        .menu-option h3 {
+            margin: 0 0 5px 0;
+            font-size: 1.2em;
+        }
+        .menu-option p {
+            margin: 0;
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        /* Menu Display Styles */
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .menu-item {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .menu-item:hover {
+            border-color: #667eea;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+        }
+        .menu-item h3 {
+            margin: 0 0 8px 0;
+            color: #333;
+            font-size: 1.1em;
+        }
+        .menu-item .price {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #667eea;
+            margin: 8px 0;
+        }
+        .menu-item .category {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            margin-top: 8px;
+        }
+        .menu-item .aliases {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 8px;
+            font-style: italic;
+        }
+        .menu-item .add-btn {
+            width: 100%;
+            margin-top: 10px;
+            padding: 10px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .menu-item .add-btn:hover {
+            background: #218838;
+        }
+        .menu-category {
+            margin: 20px 0;
+        }
+        .menu-category h3 {
+            color: #333;
+            font-size: 1.3em;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        /* Cart Styles */
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: white;
+            border-radius: 6px;
+            margin: 8px 0;
+            border: 1px solid #e0e0e0;
+        }
+        .cart-item-info {
+            flex: 1;
+        }
+        .cart-item-name {
+            font-weight: 600;
+            color: #333;
+        }
+        .cart-item-details {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 4px;
+        }
+        .cart-item-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .quantity-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .quantity-btn {
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            border-radius: 50%;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .quantity-display {
+            font-weight: 600;
+            min-width: 30px;
+            text-align: center;
+        }
+        .cart-total {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid #e0e0e0;
+        }
+        
+        /* Conversation Styles */
+        .conversation-box {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+        }
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .message.user {
+            background: #e3f2fd;
+            margin-left: 40px;
+        }
+        .message.agent {
+            background: #f3e5f5;
+            margin-right: 40px;
+        }
+        .message-label {
+            font-weight: 600;
+            font-size: 0.85em;
+            margin-bottom: 5px;
+        }
+        
+        /* Voice Controls */
+        .voice-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .mic-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #dc3545;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+        .mic-indicator.recording {
+            background: #28a745;
+            animation: pulse 0.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Compact Layout Overrides */
+        .compact-layout {
+            font-size: 0.9em;
+        }
+        .compact-layout .section {
+            padding: 10px;
+        }
+        .compact-layout .section h2 {
+            font-size: 1em;
+            margin-bottom: 6px;
+        }
+        .compact-layout .menu-item {
+            padding: 12px;
+        }
+        .compact-layout .menu-item h3 {
+            font-size: 1em;
+            margin-bottom: 6px;
+        }
+        .compact-layout .menu-item .price {
+            font-size: 1.2em;
+            margin: 6px 0;
+        }
+        .compact-layout .cart-item {
+            padding: 10px;
+            margin: 6px 0;
+        }
+        .compact-layout .conversation-box {
+            max-height: 250px;
+            padding: 12px;
+        }
+        .compact-layout .message {
+            margin: 8px 0;
+            padding: 8px;
+        }
+        .compact-layout .cart-total {
+            font-size: 1.3em;
+            margin-top: 12px;
+            padding-top: 12px;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body class="compact-layout">
+    <div class="container">
+        <h1>🍩 Dr. Donut Voice Ordering System</h1>
+        <p class="subtitle">Order by voice or click the menu items below</p>
+        
+        <div class="section">
+            <h2>📊 Status</h2>
+            <div id="status" class="status status-info">Initializing...</div>
+            <div style="margin-top: 8px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; font-size: 0.85em;">
+                <div><strong>Session:</strong> <span id="session-display">Loading...</span></div>
+                <div><strong>Menu:</strong> <span id="menu-display-name">-</span></div>
+                <div><strong>Ultravox:</strong> <span id="ultravox-display">Not connected</span></div>
+                <div><strong>Recording:</strong> <span id="recording-display">Stopped</span></div>
+                <div><strong>Voice State:</strong> <span id="voice-state-display">idle</span></div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>📋 Select Menu</h2>
+            <div class="menu-selector">
+                <div class="menu-option" id="menu-small" onclick="selectMenu('small')">
+                    <h3>Small Menu</h3>
+                    <p>5 items - Quick & Simple</p>
+                </div>
+                <div class="menu-option" id="menu-large" onclick="selectMenu('large')">
+                    <h3>Large Menu</h3>
+                    <p>18 items - Full Selection</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>🎤 Voice Controls</h2>
+            <div class="voice-controls">
+                <button id="connect-btn" class="btn-primary" onclick="connectToUltravox()" disabled>Connect to Ultravox</button>
+                <button id="record-btn" onclick="startRecording()" disabled>
+                    <span id="mic-indicator" class="mic-indicator"></span>
+                    Start Recording
+                </button>
+                <button id="stop-btn" onclick="stopRecording()" disabled>Stop Recording</button>
+                <button onclick="resetAllSessions()" class="btn-secondary">Reset All</button>
+            </div>
+        </div>
+        
+        <div class="main-layout">
+            <div class="left-panel">
+                <div class="section">
+                    <h2>📋 Menu</h2>
+                    <div id="menu-display">
+                        <p>Select a menu above to get started...</p>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <h2>💬 Conversation</h2>
+                    <div id="conversation" class="conversation-box">
+                        <div class="message agent">
+                            <div class="message-label">Dr. Donut:</div>
+                            <div>Welcome to Dr. Donut! Please select a menu to get started.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="right-panel">
+                <div class="section">
+                    <h2>🛒 Your Cart</h2>
+                    <div id="cart-items">
+                        <p style="color: #999; text-align: center; padding: 20px;">Your cart is empty</p>
+                    </div>
+                    <div id="cart-total" class="cart-total">Total: $0.00</div>
+                    <div style="margin-top: 15px; display: flex; gap: 10px;">
+                        <button onclick="clearCart()" class="btn-secondary" style="flex: 1;">Clear Cart</button>
+                        <button id="confirm-btn" onclick="confirmOrder()" class="btn-success" style="flex: 1;" disabled>Confirm & Pay</button>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <h2>📋 Order History</h2>
+                    <div id="order-history">
+                        <p style="color: #999; text-align: center; padding: 20px;">No orders yet</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        // Global variables
+        let sessionId = null;
+        let isConnectedToUltravox = false;
+        let isRecording = false;
+        let audioContext = null;
+        let recordingStream = null;
+        let menuItems = [];
+        let currentMenu = 'small';
+        const socket = io();
+
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            // Start with small menu by default
+            selectMenu('small');
+        });
+
+        // Socket.IO event handlers
+        socket.on('connect', () => {
+            console.log('✅ Connected to server');
+            showStatus('Connected to server', 'success');
+        });
+
+        socket.on('disconnect', () => {
+            console.log('❌ Disconnected from server');
+            showStatus('Disconnected from server', 'error');
+        });
+
+        socket.on('ultravox_connection', (data) => {
+            if (data.success) {
+                isConnectedToUltravox = true;
+                document.getElementById('ultravox-display').textContent = 'Connected';
+                document.getElementById('record-btn').disabled = false;
+                showStatus('✅ Connected to Ultravox! You can now speak or click menu items.', 'success');
+                addConversationMessage('agent', 'Connected! You can now order by voice or click menu items.');
+            } else {
+                showStatus('❌ Failed to connect to Ultravox', 'error');
+            }
+        });
+
+        socket.on('user_transcript', (data) => {
+            if (data.final) {
+                addConversationMessage('user', data.text);
+                console.log('👤 User:', data.text);
+            }
+        });
+
+        socket.on('agent_response', (data) => {
+            if (data.final) {
+                addConversationMessage('agent', data.text);
+                console.log('🤖 Agent:', data.text);
+            }
+        });
+
+        socket.on('cart_update', (data) => {
+            updateCartDisplay(data.cart);
+        });
+
+        socket.on('order_confirmed', (data) => {
+            showStatus(data.message, 'success');
+            updateOrderHistory();
+        });
+
+        socket.on('voice_state', (data) => {
+            document.getElementById('voice-state-display').textContent = data.state;
+        });
+
+        socket.on('error', (data) => {
+            console.error('❌ Error:', data.msg);
+            showStatus(data.msg, 'error');
+        });
+
+        // Add auto-confirmation handler for voice commands
+        socket.on('auto_confirm_order', function(data) {
+            console.log('🎉 Auto-confirming order via voice command:', data.message);
+            
+            // Show notification
+            showNotification(data.message, 'success');
+            
+            // Trigger the confirm button programmatically
+            const confirmButton = document.getElementById('confirm-order-btn') || 
+                                 document.querySelector('[onclick*="confirmOrder"]') ||
+                                 document.querySelector('.confirm-button');
+            
+            if (confirmButton) {
+                // Add visual feedback
+                confirmButton.style.background = 'linear-gradient(45deg, #28a745, #20c997)';
+                confirmButton.style.transform = 'scale(1.05)';
+                confirmButton.textContent = '✅ Confirming...';
+                
+                // Trigger the confirmation after a brief delay for visual feedback
+                setTimeout(() => {
+                    confirmButton.click();
+                }, 500);
+                
+                // Reset button appearance
+                setTimeout(() => {
+                    if (confirmButton) {
+                        confirmButton.style.background = '';
+                        confirmButton.style.transform = '';
+                        confirmButton.textContent = 'Confirm & Pay';
+                    }
+                }, 2000);
+            } else {
+                console.warn('⚠️ Could not find confirm button to trigger');
+                // Fallback: call confirmOrder directly if button not found
+                if (typeof confirmOrder === 'function') {
+                    confirmOrder();
+                }
+            }
+        });
+
+        // Helper function to show notifications
+        function showNotification(message, type = 'info') {
+            // Create notification element if it doesn't exist
+            let notification = document.getElementById('voice-notification');
+            if (!notification) {
+                notification = document.createElement('div');
+                notification.id = 'voice-notification';
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    padding: 15px 20px;
+                    border-radius: 8px;
+                    color: white;
+                    font-weight: bold;
+                    z-index: 10000;
+                    transition: all 0.3s ease;
+                    max-width: 300px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                `;
+                document.body.appendChild(notification);
+            }
+            
+            // Set colors based on type
+            const colors = {
+                success: 'linear-gradient(45deg, #28a745, #20c997)',
+                error: 'linear-gradient(45deg, #dc3545, #fd7e14)',
+                info: 'linear-gradient(45deg, #007bff, #6f42c1)',
+                warning: 'linear-gradient(45deg, #ffc107, #fd7e14)'
+            };
+            
+            notification.style.background = colors[type] || colors.info;
+            notification.textContent = message;
+            notification.style.display = 'block';
+            notification.style.opacity = '1';
+            
+            // Auto-hide after 3 seconds
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => {
+                    notification.style.display = 'none';
+                }, 300);
+            }, 3000);
+        }
+
+        // Select menu
+        async function selectMenu(menuType) {
+            currentMenu = menuType;
+            
+            // Update UI
+            document.querySelectorAll('.menu-option').forEach(opt => opt.classList.remove('active'));
+            document.getElementById(`menu-${menuType}`).classList.add('active');
+            
+            // Show loading
+            showStatus(`🔄 Loading ${menuType} menu...`, 'info');
+            
+            try {
+                const response = await fetch(`/api/start_session?menu=${menuType}`);
+                const data = await response.json();
+                sessionId = data.session_id;
+                menuItems = data.menu_items;
+                
+                document.getElementById('session-display').textContent = sessionId.substring(0, 8) + '...';
+                document.getElementById('menu-display-name').textContent = data.menu;
+                document.getElementById('connect-btn').disabled = false;
+                
+                displayMenu(menuItems);
+                updateCartDisplay({ items: [], total: 0.0 });
+                updateOrderHistory();
+                
+                showStatus(`✅ ${menuType.charAt(0).toUpperCase() + menuType.slice(1)} menu loaded. Click "Connect to Ultravox" to start voice ordering.`, 'success');
+                addConversationMessage('agent', `${menuType.charAt(0).toUpperCase() + menuType.slice(1)} menu loaded! You can now order by voice or click menu items.`);
+            } catch (error) {
+                console.error('Error loading menu:', error);
+                showStatus('❌ Failed to load menu', 'error');
+            }
+        }
+
+        // Display menu
+        function displayMenu(items) {
+            const menuDisplay = document.getElementById('menu-display');
+            
+            // Group items by category
+            const categories = {};
+            items.forEach(item => {
+                if (!categories[item.category]) {
+                    categories[item.category] = [];
+                }
+                categories[item.category].push(item);
+            });
+            
+            let html = '';
+            for (const [category, categoryItems] of Object.entries(categories)) {
+                html += `<div class="menu-category">`;
+                html += `<h3>${category.charAt(0).toUpperCase() + category.slice(1)}</h3>`;
+                html += `<div class="menu-grid">`;
+                
+                categoryItems.forEach(item => {
+                    const aliasesText = item.aliases && item.aliases.length > 0 
+                        ? `<div class="aliases">Also: ${item.aliases.slice(0, 3).join(', ')}</div>` 
+                        : '';
+                    
+                    html += `
+                        <div class="menu-item">
+                            <h3>${item.name}</h3>
+                            <div class="price">$${item.price.toFixed(2)}</div>
+                            <span class="category">${item.category}</span>
+                            ${aliasesText}
+                            <button class="add-btn" onclick="addMenuItem('${item.sku}', '${item.name}', ${item.price})">
+                                Add to Cart
+                            </button>
+                        </div>
+                    `;
+                });
+                
+                html += `</div></div>`;
+            }
+            
+            menuDisplay.innerHTML = html;
+        }
+
+        // Add menu item to cart
+        async function addMenuItem(sku, name, price) {
+            if (!sessionId) {
+                showStatus('❌ No active session', 'error');
+                return;
+            }
+            
+            // Create a transcript to trigger cart update
+            const transcript = `I would like to add ${name}`;
+            
+            // Send to backend for processing
+            try {
+                const response = await fetch('/api/process_transcript', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        transcript: transcript
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showStatus(`✅ Added ${name} to cart`, 'success');
+                    addConversationMessage('user', `Add ${name}`);
+                } else {
+                    showStatus(`❌ Failed to add ${name}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error adding menu item:', error);
+                showStatus('❌ Error adding item', 'error');
+            }
+        }
+        
+        // Remove menu item from cart
+        async function removeMenuItemFromCart(sku, name) {
+            if (!sessionId) {
+                showStatus('❌ No active session', 'error');
+                return;
+            }
+            
+            // Create a transcript to trigger cart removal
+            const transcript = `I would like to remove ${name}`;
+            
+            // Send to backend for processing
+            try {
+                const response = await fetch('/api/process_transcript', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        transcript: transcript
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showStatus(`✅ Removed ${name} from cart`, 'success');
+                    addConversationMessage('user', `Remove ${name}`);
+                } else {
+                    showStatus(`❌ Failed to remove ${name}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error removing menu item:', error);
+                showStatus('❌ Error removing item', 'error');
+            }
+        }
+
+        // Update cart display
+        function updateCartDisplay(cart) {
+            const cartItemsDiv = document.getElementById('cart-items');
+            const cartTotalDiv = document.getElementById('cart-total');
+            const confirmBtn = document.getElementById('confirm-btn');
+            
+            if (!cart.items || cart.items.length === 0) {
+                cartItemsDiv.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">Your cart is empty</p>';
+                confirmBtn.disabled = true;
+            } else {
+                let html = '';
+                cart.items.forEach((item, index) => {
+                    html += `
+                        <div class="cart-item">
+                            <div class="cart-item-info">
+                                <div class="cart-item-name">${item.name}</div>
+                                <div class="cart-item-details">
+                                    ${item.size ? `Size: ${item.size} • ` : ''}
+                                    ${item.modifiers && item.modifiers.length > 0 ? `Modifiers: ${item.modifiers.join(', ')} • ` : ''}
+                                    $${item.price.toFixed(2)} each
+                                </div>
+                            </div>
+                            <div class="cart-item-actions">
+                                <div class="quantity-control">
+                                    <button class="quantity-btn btn-secondary" onclick="updateQuantity(${index}, ${item.quantity - 1})">-</button>
+                                    <span class="quantity-display">${item.quantity}</span>
+                                    <button class="quantity-btn btn-success" onclick="updateQuantity(${index}, ${item.quantity + 1})">+</button>
+                                </div>
+                                <button class="btn-danger" onclick="removeItem(${index})" style="padding: 8px 12px;" title="Remove all">✕</button>
+                            </div>
+                        </div>
+                    `;
+                });
+                cartItemsDiv.innerHTML = html;
+                confirmBtn.disabled = false;
+            }
+            
+            cartTotalDiv.textContent = `Total: $${cart.total.toFixed(2)}`;
+        }
+
+        // Update quantity
+        async function updateQuantity(index, newQuantity) {
+            if (newQuantity <= 0) {
+                await removeItem(index);
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/update_item_quantity', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        item_index: index,
+                        quantity: newQuantity
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    updateCartDisplay(data.cart);
+                }
+            } catch (error) {
+                console.error('Error updating quantity:', error);
+            }
+        }
+
+        // Remove item
+        async function removeItem(index) {
+            try {
+                const response = await fetch('/api/update_item_quantity', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        item_index: index,
+                        quantity: 0
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    updateCartDisplay(data.cart);
+                    showStatus('✅ Item removed from cart', 'success');
+                }
+            } catch (error) {
+                console.error('Error removing item:', error);
+            }
+        }
+
+        // Clear cart
+        async function clearCart() {
+            if (!confirm('Are you sure you want to clear your cart?')) return;
+            
+            try {
+                const response = await fetch('/api/clear_cart', {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    updateCartDisplay(data.cart);
+                    showStatus('✅ Cart cleared', 'success');
+                }
+            } catch (error) {
+                console.error('Error clearing cart:', error);
+            }
+        }
+
+        // Confirm order
+        async function confirmOrder() {
+            if (!confirm('Confirm and place this order?')) return;
+            
+            try {
+                const response = await fetch('/api/confirm_order', {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showStatus(data.message, 'success');
+                    updateOrderHistory();
+                    addConversationMessage('agent', data.message);
+                } else {
+                    showStatus(data.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error confirming order:', error);
+            }
+        }
+
+        // Update order history
+        async function updateOrderHistory() {
+            try {
+                const response = await fetch('/api/get_order_history');
+                const data = await response.json();
+                
+                const historyDiv = document.getElementById('order-history');
+                if (!data.history || data.history.length === 0) {
+                    historyDiv.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">No orders yet</p>';
+                } else {
+                    let html = '';
+                    data.history.forEach(order => {
+                        html += `
+                            <div style="background: white; padding: 12px; border-radius: 6px; margin: 8px 0; border: 1px solid #e0e0e0;">
+                                <div style="font-weight: 600; margin-bottom: 8px;">Order #${order.order_id}</div>
+                                <div style="font-size: 0.9em; color: #666; margin-bottom: 8px;">
+                                    ${order.items.map(item => `${item.quantity}x ${item.name}`).join(', ')}
+                                </div>
+                                <div style="font-weight: 600; color: #667eea;">Total: $${order.total.toFixed(2)}</div>
+                            </div>
+                        `;
+                    });
+                    historyDiv.innerHTML = html;
+                }
+            } catch (error) {
+                console.error('Error updating order history:', error);
+            }
+        }
+
+        // Add conversation message
+        function addConversationMessage(sender, text) {
+            const conversationDiv = document.getElementById('conversation');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            messageDiv.innerHTML = `
+                <div class="message-label">${sender === 'user' ? 'You' : 'Dr. Donut'}:</div>
+                <div>${text}</div>
+            `;
+            conversationDiv.appendChild(messageDiv);
+            conversationDiv.scrollTop = conversationDiv.scrollHeight;
+        }
+
+        // Connect to Ultravox
+        function connectToUltravox() {
+            showStatus('🔄 Connecting to Ultravox...', 'info');
+            socket.emit('start_ultravox', { session_id: sessionId });
+            document.getElementById('connect-btn').disabled = true;
+        }
+
+        // Start recording
+        function startRecording() {
+            if (!isConnectedToUltravox) {
+                showStatus('❌ Not connected to Ultravox', 'error');
+                return;
+            }
+            
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    recordingStream = stream;
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                        sampleRate: 48000
+                    });
+                    
+                    const source = audioContext.createMediaStreamSource(stream);
+                    const processor = audioContext.createScriptProcessor(4096, 1, 1);
+                    
+                    processor.onaudioprocess = (e) => {
+                        if (isRecording) {
+                            const inputData = e.inputBuffer.getChannelData(0);
+                            const outputData = new Int16Array(inputData.length);
+                            
+                            for (let i = 0; i < inputData.length; i++) {
+                                outputData[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
+                            }
+                            
+                            const base64 = btoa(String.fromCharCode(...new Uint8Array(outputData.buffer)));
+                            socket.emit('audio_data', {
+                                session_id: sessionId,
+                                audio: base64
+                            });
+                        }
+                    };
+                    
+                    source.connect(processor);
+                    processor.connect(audioContext.destination);
+                    
+                    isRecording = true;
+                    document.getElementById('record-btn').disabled = true;
+                    document.getElementById('stop-btn').disabled = false;
+                    document.getElementById('recording-display').textContent = 'Recording';
+                    document.getElementById('mic-indicator').classList.add('recording');
+                    showStatus('🎤 Recording... Speak now!', 'success');
+                })
+                .catch(error => {
+                    console.error('Error accessing microphone:', error);
+                    showStatus('❌ Error accessing microphone', 'error');
+                });
+        }
+
+        // Stop recording
+        function stopRecording() {
+            isRecording = false;
+            
+            if (recordingStream) {
+                recordingStream.getTracks().forEach(track => track.stop());
+                recordingStream = null;
+            }
+            
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+            
+            document.getElementById('record-btn').disabled = false;
+            document.getElementById('stop-btn').disabled = true;
+            document.getElementById('recording-display').textContent = 'Stopped';
+            document.getElementById('mic-indicator').classList.remove('recording');
+            showStatus('⏹️ Recording stopped', 'info');
+        }
+
+        // Reset all sessions
+        async function resetAllSessions() {
+            if (!confirm('Reset all sessions? This will clear your cart and disconnect.')) return;
+            
+            try {
+                const response = await fetch('/api/reset_sessions', {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showStatus('✅ All sessions reset', 'success');
+                    location.reload();
+                }
+            } catch (error) {
+                console.error('Error resetting sessions:', error);
+            }
+        }
+
+        // Show status message
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status status-${type}`;
+            
+            // Auto-clear success messages after 3 seconds
+            if (type === 'success') {
+                setTimeout(() => {
+                    statusDiv.textContent = 'Ready';
+                    statusDiv.className = 'status status-info';
+                }, 3000);
+            }
+        }
+    </script>
+</body>
+</html>
