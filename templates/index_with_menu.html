@@ -433,19 +433,6 @@
             showStatus('Disconnected from server', 'error');
         });
 
-        socket.on('ultravox_conflict', (data) => {
-            console.log('⚠️ Ultravox conflict detected:', data.message);
-            showStatus('⚠️ Connection conflict detected. Retrying...', 'warning');
-            
-            // Auto-retry after a short delay
-            setTimeout(() => {
-                if (sessionId) {
-                    showStatus('🔄 Retrying connection...', 'info');
-                    connectToUltravox();
-                }
-            }, 3000);
-        });
-
         socket.on('ultravox_connection', (data) => {
             if (data.success) {
                 isConnectedToUltravox = true;
@@ -489,6 +476,91 @@
             console.error('❌ Error:', data.msg);
             showStatus(data.msg, 'error');
         });
+
+        // Add auto-confirmation handler for voice commands
+        socket.on('auto_confirm_order', function(data) {
+            console.log('🎉 Auto-confirming order via voice command:', data.message);
+            
+            // Show notification
+            showNotification(data.message, 'success');
+            
+            // Trigger the confirm button programmatically
+            const confirmButton = document.getElementById('confirm-order-btn') || 
+                                 document.querySelector('[onclick*="confirmOrder"]') ||
+                                 document.querySelector('.confirm-button');
+            
+            if (confirmButton) {
+                // Add visual feedback
+                confirmButton.style.background = 'linear-gradient(45deg, #28a745, #20c997)';
+                confirmButton.style.transform = 'scale(1.05)';
+                confirmButton.textContent = '✅ Confirming...';
+                
+                // Trigger the confirmation after a brief delay for visual feedback
+                setTimeout(() => {
+                    confirmButton.click();
+                }, 500);
+                
+                // Reset button appearance
+                setTimeout(() => {
+                    if (confirmButton) {
+                        confirmButton.style.background = '';
+                        confirmButton.style.transform = '';
+                        confirmButton.textContent = 'Confirm & Pay';
+                    }
+                }, 2000);
+            } else {
+                console.warn('⚠️ Could not find confirm button to trigger');
+                // Fallback: call confirmOrder directly if button not found
+                if (typeof confirmOrder === 'function') {
+                    confirmOrder();
+                }
+            }
+        });
+
+        // Helper function to show notifications
+        function showNotification(message, type = 'info') {
+            // Create notification element if it doesn't exist
+            let notification = document.getElementById('voice-notification');
+            if (!notification) {
+                notification = document.createElement('div');
+                notification.id = 'voice-notification';
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    padding: 15px 20px;
+                    border-radius: 8px;
+                    color: white;
+                    font-weight: bold;
+                    z-index: 10000;
+                    transition: all 0.3s ease;
+                    max-width: 300px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                `;
+                document.body.appendChild(notification);
+            }
+            
+            // Set colors based on type
+            const colors = {
+                success: 'linear-gradient(45deg, #28a745, #20c997)',
+                error: 'linear-gradient(45deg, #dc3545, #fd7e14)',
+                info: 'linear-gradient(45deg, #007bff, #6f42c1)',
+                warning: 'linear-gradient(45deg, #ffc107, #fd7e14)'
+            };
+            
+            notification.style.background = colors[type] || colors.info;
+            notification.textContent = message;
+            notification.style.display = 'block';
+            notification.style.opacity = '1';
+            
+            // Auto-hide after 3 seconds
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => {
+                    notification.style.display = 'none';
+                }, 300);
+            }, 3000);
+        }
 
         // Select menu
         async function selectMenu(menuType) {

@@ -416,13 +416,15 @@
             });
 
             socket.on('ultravox_connection', function(data) {
+                console.log('🎯 Ultravox connection event received:', data);
                 if (data.success) {
                     isConnectedToUltravox = true;
                     showStatus('🎤 Connected to Ultravox! You can now start speaking.', 'success');
-                    document.getElementById('start-btn').disabled = false;
                 } else {
+                    isConnectedToUltravox = false;
                     showStatus('❌ Failed to connect to Ultravox. Please try again.', 'error');
                 }
+                updateButtons();
             });
 
             socket.on('user_transcript', function(data) {

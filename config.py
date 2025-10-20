@@ -14,7 +14,7 @@ class Config:
     DEBUG = os.environ.get('DEBUG', 'false').lower() == 'true'
     
     # Ultravox API Configuration
-    ULTRAVOX_API_KEY = os.getenv("ULTRAVOX_API_KEY", "GYQpq6Un.sI0olzfXjmbbfDmhpKiy9ieLZOYwY3xz")
+    ULTRAVOX_API_KEY = os.getenv("ULTRAVOX_API_KEY", "kdyG4Sth.SYDFSGkgyfioyT1JAFREtRBim11T8e9Q")
     ULTRAVOX_API_URL = "https://api.ultravox.ai/api/calls"
     
     # WebSocket Configuration

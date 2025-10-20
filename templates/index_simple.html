@@ -657,8 +657,6 @@
             } else {
                 isConnectedToUltravox = false;
                 showStatus('❌ Ultravox connection failed: ' + (data.error || 'Unknown error'), 'error');
-                document.getElementById('connect-btn').disabled = false;
-                document.getElementById('connect-btn').textContent = 'Connect to Ultravox';
             }
             updateDisplays();
         });
